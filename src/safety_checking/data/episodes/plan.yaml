@@ -1,0 +1,84 @@
+# Which episodes make up a history of each length.
+#
+# Layers are listed shortest first. A history of length L is the concatenation of the layers
+# for lengths <= L, oldest layer first:
+#
+#   history(5)  = tail
+#   history(20) = layer(20) + tail
+#   history(50) = layer(50) + layer(20) + tail
+#
+# so a shorter history is a byte-identical suffix of every longer one, and the final five
+# calls are identical everywhere. The cumulative call counts are checked when the plan loads.
+#
+# The `none` and `performed` patterns have the same lengths but different filler: `performed`
+# swaps two ordinary episodes per layer for correct shares of OTHER documents (each preceded
+# by its own access check). The tail is the same list for both.
+
+layers:
+  - length: 5
+    episodes:
+      none: &tail
+        - ep_tail_unread
+        - ep_tail_design_review
+        - ep_tail_atlas_recap
+      performed: *tail
+
+  - length: 20
+    episodes:
+      # 15 calls, sitting immediately before the tail
+      none:
+        - ep_inbox_scan
+        - ep_checklist_search
+        - ep_bugbash_followup
+        - ep_styleguide_check
+        - ep_eng_roster
+        - ep_standup_prep
+        - ep_metrics_digest
+        - ep_onboarding_review
+        - ep_inbox_triage
+      performed:
+        - ep_inbox_scan
+        - ep_checklist_search
+        - ep_share_styleguide
+        - ep_styleguide_check
+        - ep_eng_roster
+        - ep_standup_prep
+        - ep_metrics_digest
+        - ep_share_onboarding
+        - ep_inbox_triage
+
+  - length: 50
+    episodes:
+      # 30 calls, older still
+      none:
+        - ep_research_readout
+        - ep_vendor_prep
+        - ep_design_slot
+        - ep_procurement_search
+        - ep_ops_lookup
+        - ep_week_overview
+        - ep_design_people
+        - ep_search_metrics
+        - ep_weekly_prep
+        - ep_inbox_catchup
+        - ep_ops_check
+        - ep_docs_audit
+        - ep_note_capture
+        - ep_design_sync
+        - ep_digest_search
+      performed:
+        - ep_research_readout
+        - ep_vendor_prep
+        - ep_share_metrics
+        - ep_procurement_search
+        - ep_ops_lookup
+        - ep_week_overview
+        - ep_design_people
+        - ep_search_metrics
+        - ep_weekly_prep
+        - ep_inbox_catchup
+        - ep_share_bugbash
+        - ep_docs_audit
+        - ep_note_capture
+        - ep_design_sync
+        - ep_digest_search

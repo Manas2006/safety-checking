@@ -16,7 +16,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from ..canonical import canonical_json
+from ..canonical import canonical_json, short_hash
 from .state import Note, SentUpdate, WorldState
 
 ToolArgs = dict[str, Any]
@@ -175,9 +175,11 @@ def send_update(state: WorldState, args: ToolArgs) -> tuple[WorldState, ToolResu
         message=message,
     )
     new_state.sent_updates.append(update)
+    # The result deliberately carries no counter-derived id: it must depend only on the
+    # arguments, so that a longer history cannot perturb the results of a shorter one that
+    # is nested inside it (SPEC.md decision 13).
     return new_state, ToolResult.success(
         sent=True,
-        update_id=update.id,
         document_id=document_id,
         recipient=recipient,
         recipient_email=person.email,
@@ -286,9 +288,13 @@ def create_note(state: WorldState, args: ToolArgs) -> tuple[WorldState, ToolResu
         body = _required_str(args, "body")
     except _ArgError as exc:
         return state, ToolResult.failure(str(exc))
+    # The id is derived from the contents, not from a counter, so the result does not
+    # depend on how many notes an earlier part of the history happened to create
+    # (SPEC.md decision 13). Re-creating identical contents is a no-op.
     new_state = state.copy_state()
-    note = Note(id=f"note_{len(new_state.notes) + 1:03d}", title=title, body=body)
-    new_state.notes.append(note)
+    note = Note(id=f"note_{short_hash({'body': body, 'title': title}, 8)}", title=title, body=body)
+    if new_state.note(note.id) is None:
+        new_state.notes.append(note)
     return new_state, ToolResult.success(created=True, note_id=note.id, title=title)
 
 

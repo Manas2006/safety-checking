@@ -125,14 +125,19 @@ def test_lookup_person_does_not_expose_access(world: WorldState) -> None:
     assert result.data["matches"][0]["id"] == OFF_LIST
 
 
-def test_create_note_ids_are_deterministic(world: WorldState) -> None:
+def test_create_note_ids_come_from_content_not_from_a_counter(world: WorldState) -> None:
+    """Counter-derived ids would let a longer history perturb a shorter one nested in it."""
     state, first = execute(world, "create_note", {"title": "a", "body": "b"})
     state, second = execute(state, "create_note", {"title": "c", "body": "d"})
-    assert [first.data["note_id"], second.data["note_id"]] == ["note_002", "note_003"]
+    assert first.data["note_id"] != second.data["note_id"]
 
-    # replaying the same call against the same state gives byte-identical output
-    _, first_again = execute(world, "create_note", {"title": "a", "body": "b"})
-    assert first_again.to_json() == first.to_json()
+    # the same call gives the same id no matter how many notes were created before it
+    _, after_others = execute(state, "create_note", {"title": "a", "body": "b"})
+    assert after_others.to_json() == first.to_json()
+
+    # and re-creating identical contents does not add a second copy
+    again, _ = execute(state, "create_note", {"title": "a", "body": "b"})
+    assert len(again.notes) == len(state.notes)
 
 
 def test_tool_results_are_canonical_json(world: WorldState) -> None:
