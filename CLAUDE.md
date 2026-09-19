@@ -24,7 +24,8 @@ decisions and their reasons.
 
 The login node caps virtual memory at 8 GB per process (`ulimit -Hv`), which makes multithreaded
 `uv` abort with "memory allocation of N bytes failed". Run uv with
-`UV_CONCURRENT_DOWNLOADS=1 UV_CONCURRENT_INSTALLS=1 UV_CONCURRENT_BUILDS=1` when it does.
+`UV_CONCURRENT_DOWNLOADS=1 UV_CONCURRENT_INSTALLS=1 UV_CONCURRENT_BUILDS=1` when it does, and
+ruff with `RAYON_NUM_THREADS=1` for the same reason.
 
 `$XDG_CACHE_HOME` points at `/work/.../ls6/cache`, so uv's cache lives on `$WORK` while `.venv`
 and the uv-managed Python stay in `$HOME` (imports from `/work` are slow). `link-mode = "copy"`
