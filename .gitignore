@@ -1,0 +1,18 @@
+# secrets
+.env
+
+# large outputs live on $WORK; ./outputs is a symlink to them
+/outputs
+
+# environments and build artifacts
+.venv/
+dist/
+build/
+*.egg-info/
+
+# caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
