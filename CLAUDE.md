@@ -21,6 +21,12 @@ decisions and their reasons.
   commit.
 - If something in the environment blocks you, stop and ask. Do not work around it by installing
   system packages.
+- **Never import torch, vllm or transformers on the login node**, and never add them to this
+  project's dependencies. The 8 GB virtual-memory cap kills the import. Installing their wheels
+  into `$WORK/venvs/vllm` is fine (`scripts/setup_vllm_env.sh`); anything that imports them runs
+  inside a job. A test enforces this for `src/` and `tests/`.
+- **GPU jobs are submitted only when Manas says so, for the config he names.** Never pick an
+  allocation: it is passed with `sbatch -A` and is not written in any script.
 
 The login node caps virtual memory at 8 GB per process (`ulimit -Hv`), which makes multithreaded
 `uv` abort with "memory allocation of N bytes failed". Run uv with
@@ -39,15 +45,33 @@ uv run pytest                # tests (fast, offline)
 uv run ruff check .          # lint
 uv run ruff format .         # format
 uv run sc --help             # CLI
+```
 
 `TIKTOKEN_CACHE_DIR` defaults to `outputs/tiktoken_cache`, which already holds the `o200k_base`
 encoding, so nothing downloads at test time.
+
+## GPU path
+
+Real runs are open-weights models served by vLLM on LS6 GPU nodes (`gpu-a100*`: 3x A100 40 GB;
+`gpu-h100`: 2x H100 80 GB), not a paid API. See SPEC.md 3.9.
+
+```bash
+scripts/setup_vllm_env.sh cu129                        # once, login node, install only
+scripts/download_weights.sh configs/models/<m>.yaml    # once; large; Manas runs this himself
+uv run sc serve-args configs/smoke.yaml                # the exact vllm serve command
+uv run sc run --config configs/smoke.yaml --dry-run    # cells and tokens, no server needed
+sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml
 ```
+
+Everything about a model lives in `configs/models/*.yaml` and is hashed into every run id, so
+editing that file means new runs. Job logs, the vLLM log, timing and the run summary land in
+`outputs/logs/`; rendered prompts in `outputs/renders/`.
 
 ## Conventions
 
-- Everything except the model call is deterministic and unit-tested. No clock, no randomness, no
-  network in library code.
+- Everything except the model call is deterministic and unit-tested. No randomness and no
+  network in library code. The one clock is the wall-time measurement around model calls
+  (`elapsed_s`, tokens per second): metadata only, never hashed and never scored.
 - Tools are pure: `(state, args) -> (state, ToolResult)`. Bad input returns an error result and
   never raises.
 - All hashing goes through `canonical.py` (sorted keys, compact separators, UTF-8). Never hash a
