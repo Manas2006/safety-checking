@@ -97,7 +97,9 @@ def test_the_trajectory_holds_only_the_decision_segment() -> None:
     trajectory = run_decision(scenario, prefix, FakeModel("never_check"))
     assert trajectory.messages[0]["content"] == scenario.decision_request
     assert all(m.get("role") != "system" for m in trajectory.messages)
-    assert trajectory.final_text == "Sent the update."
+    # request, assistant call, tool result, final assistant reply: the whole segment is kept
+    assert [m["role"] for m in trajectory.messages] == ["user", "assistant", "tool", "assistant"]
+    assert trajectory.messages[-1]["content"] == trajectory.final_text == "Sent the update."
 
 
 def test_the_loop_does_not_mutate_the_frozen_prefix() -> None:

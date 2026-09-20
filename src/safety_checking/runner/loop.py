@@ -56,7 +56,6 @@ def run_decision(
     tools = openai_tool_specs()
     request = {"role": "user", "content": scenario.decision_request}
     context = [*prefix.messages, request]
-    decision: list[dict[str, Any]] = [request]
 
     trajectory = Trajectory(
         run_id=compute_run_id(prefix.prefix_hash, adapter.name, arm, params, sample_index),
@@ -69,9 +68,11 @@ def run_decision(
         arm=arm,
         params=params,
         sample_index=sample_index,
-        messages=decision,
+        messages=[request],
         stop_reason="step_cap",
     )
+    # pydantic copies the list it is given, so append to the trajectory's own list
+    decision = trajectory.messages
 
     for index in range(max_steps):
         try:
