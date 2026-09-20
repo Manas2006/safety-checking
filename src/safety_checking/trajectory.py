@@ -45,9 +45,15 @@ class Step(BaseModel):
 
     index: int
     content: str | None = None
+    #: what the server's reasoning parser split off, if anything. Expected empty in
+    #: non-thinking mode; kept so a template or parser problem is visible.
+    reasoning: str | None = None
     tool_calls: list[ToolCallRecord] = Field(default_factory=list)
     usage: Usage | None = None
     finish_reason: str | None = None
+    #: set when the turn looks like a tool call the server failed to parse (see
+    #: runner/parse_check.py). Such a run is never scored as a skipped check.
+    parse_failure: str | None = None
 
 
 class Trajectory(BaseModel):
@@ -63,6 +69,13 @@ class Trajectory(BaseModel):
     arm: str
     params: dict[str, Any] = Field(default_factory=dict)
     sample_index: int
+    #: the per-request sampling seed actually sent (base_seed + sample_index), if any
+    seed: int | None = None
+    #: what the server said about itself: served model name, vllm version, base_url
+    server: dict[str, Any] = Field(default_factory=dict)
+    #: wall-clock seconds for the whole decision segment. Measurement metadata only: it is
+    #: never hashed and never scored.
+    elapsed_s: float | None = None
 
     #: the decision segment only: the request, then the model's turns and tool results
     messages: list[dict[str, Any]] = Field(default_factory=list)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 from ..history.builder import Prefix
@@ -11,6 +12,7 @@ from ..trajectory import Step, ToolCallRecord, Trajectory
 from ..world.registry import execute, openai_tool_specs
 from ..world.tools import ToolResult
 from .adapters import ModelAdapter
+from .parse_check import INVALID_ARGUMENTS, detect_parse_failure
 from .store import compute_run_id
 
 MAX_STEPS = 8
@@ -38,6 +40,7 @@ def run_decision(
     params: dict[str, Any] | None = None,
     sample_index: int = 0,
     max_steps: int = MAX_STEPS,
+    seed: int | None = None,
 ) -> Trajectory:
     """Sample one decision segment.
 
@@ -45,8 +48,13 @@ def run_decision(
     model acts until it returns a turn with no tool calls or runs out of steps. An adapter
     failure is recorded as ``stop_reason="error"``; the store does not treat such a run as
     done, so it is retried on the next invocation.
+
+    ``seed`` is the per-request sampling seed. It is sent with every request and recorded, but
+    it is not part of the run id: it is derived from the sample index, which already is.
     """
     params = dict(params or {})
+    request_params = params if seed is None else {**params, "seed": seed}
+    started = time.perf_counter()
     if prefix.scenario_id != scenario.id:
         raise ValueError(f"prefix is for {prefix.scenario_id}, not {scenario.id}")
     if hasattr(adapter, "bind"):
@@ -68,6 +76,8 @@ def run_decision(
         arm=arm,
         params=params,
         sample_index=sample_index,
+        seed=seed,
+        server=adapter.server_info() if hasattr(adapter, "server_info") else {},
         messages=[request],
         stop_reason="step_cap",
     )
@@ -77,10 +87,11 @@ def run_decision(
     for index in range(max_steps):
         try:
             # a copy, so an adapter can neither see later turns nor mutate the loop's context
-            response = adapter.generate(list(context), tools, dict(params))
+            response = adapter.generate(list(context), tools, dict(request_params))
         except Exception as exc:
             trajectory.stop_reason = "error"
             trajectory.error = f"{type(exc).__name__}: {exc}"
+            trajectory.elapsed_s = time.perf_counter() - started
             return trajectory
 
         assistant: dict[str, Any] = {"role": "assistant", "content": response.content}
@@ -92,14 +103,17 @@ def run_decision(
         step = Step(
             index=index,
             content=response.content,
+            reasoning=response.reasoning,
             usage=response.usage,
             finish_reason=response.finish_reason,
+            parse_failure=detect_parse_failure(response.content, response.tool_calls),
         )
         trajectory.steps.append(step)
 
         if not response.tool_calls:
             trajectory.stop_reason = "no_tool_calls"
             trajectory.final_text = response.content
+            trajectory.elapsed_s = time.perf_counter() - started
             return trajectory
 
         for call in response.tool_calls:
@@ -110,6 +124,7 @@ def run_decision(
                 world, result = execute(world, name, args)
             else:
                 result = ToolResult.failure(problem)
+                step.parse_failure = step.parse_failure or INVALID_ARGUMENTS
             result_json = result.to_json()
             tool_message = {
                 "role": "tool",
@@ -124,4 +139,5 @@ def run_decision(
 
     # ran out of steps while still calling tools: keep whatever the last turn said
     trajectory.final_text = trajectory.steps[-1].content if trajectory.steps else None
+    trajectory.elapsed_s = time.perf_counter() - started
     return trajectory

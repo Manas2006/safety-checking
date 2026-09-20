@@ -1,0 +1,63 @@
+# Qwen/Qwen3.8-27B, BF16, non-thinking mode, served by vLLM on one LS6 GPU node.
+#
+# Checked against the model card and the vLLM recipe on 2026-09-20:
+#   https://huggingface.co/Qwen/Qwen3.8-27B   https://recipes.vllm.ai/Qwen/Qwen3.8-27B
+#   - 27.78B parameters, BF16, 55.6 GB in 18 shards, Apache-2.0, not gated
+#   - architecture Qwen3_5ForConditionalGeneration: a vision-language model, hybrid attention
+#     (linear attention on 48 of 64 layers), 24 attention heads and 4 KV heads, so tensor
+#     parallel 2 divides both (3 would not)
+#   - recipe: vLLM 0.17.0+, --reasoning-parser qwen3, --tool-call-parser qwen3_xml,
+#     --enable-auto-tool-choice; prefix caching supported for this architecture
+#   - thinking is ON by default; off per request with chat_template_kwargs.enable_thinking=false
+#   - card's non-thinking sampling: temperature 0.7, top_p 0.8, top_k 20, min_p 0,
+#     presence_penalty 1.5, repetition_penalty 1.0
+#
+# Everything in this file is hashed into the adapter name, and so into every run id.
+
+id: qwen3.8-27b-nothink
+hf_repo: Qwen/Qwen3.8-27B
+# pinned so that a silent update to the repo (weights or chat template) cannot change results
+revision: 1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0
+served_model_name: qwen3.8-27b
+
+serve:
+  vllm_version: "0.29.0"
+  tensor_parallel_size: 2
+  # The model's native limit is 262144. Our longest prompt is about 9k tokens; 16384 leaves
+  # room for an 8-step decision and keeps the KV cache inside what two 40 GB A100s have left
+  # after 27.8 GB of weights each.
+  max_model_len: 16384
+  dtype: bfloat16
+  gpu_memory_utilization: 0.90
+  max_num_seqs: 16
+  seed: 0
+  tool_call_parser: qwen3_xml
+  reasoning_parser: qwen3
+  enable_prefix_caching: true
+  host: 127.0.0.1
+  port: 8000
+  startup_timeout_s: 1200
+  extra_args:
+    # text only: do not reserve memory for image or video inputs
+    - --limit-mm-per-prompt
+    - '{"image": 0, "video": 0}'
+
+request:
+  sampling:
+    temperature: 0.7
+    top_p: 0.8
+    # On the model card, not in the original brief. It penalises tokens already present in the
+    # *generated* text, not the prompt, so it does not interact with history length; but it
+    # can plausibly affect repeated tokens inside a tool call. Flagged in SPEC.md.
+    presence_penalty: 1.5
+    max_tokens: 1024
+  extra_body:
+    top_k: 20
+    min_p: 0.0
+    repetition_penalty: 1.0
+    chat_template_kwargs:
+      enable_thinking: false
+  base_seed: 0
+
+notes: >-
+  A100 (Ampere) has no FP8 kernels, hence BF16 rather than the FP8 checkpoint.

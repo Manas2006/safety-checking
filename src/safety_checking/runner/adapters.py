@@ -11,12 +11,15 @@ from __future__ import annotations
 
 import json
 import os
+import urllib.request
+from collections.abc import Callable
 from typing import Any, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from ..canonical import canonical_json
+from ..config import ModelConfig, is_local_url
 from ..scenarios.schema import Scenario
 from ..trajectory import Usage
 
@@ -29,6 +32,8 @@ class AdapterResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     content: str | None = None
+    #: text the server's reasoning parser split off (vLLM: reasoning / reasoning_content)
+    reasoning: str | None = None
     #: [{"id", "type": "function", "function": {"name", "arguments": "<json string>"}}]
     tool_calls: list[dict[str, Any]] = Field(default_factory=list)
     usage: Usage | None = None
@@ -40,8 +45,9 @@ class ModelAdapter(Protocol):
     """What the runner needs from a model.
 
     ``name`` goes into the run id, so it must identify the model and anything about the
-    endpoint that changes behaviour. An adapter may also define ``bind(scenario)``; the runner
-    calls it when present. Real adapters do not need it, the fake ones do.
+    endpoint that changes behaviour. Two optional methods, called by the runner when present:
+    ``bind(scenario)`` (only the fake models need it) and ``server_info()`` (what the server
+    says about itself, recorded in every trajectory).
     """
 
     name: str
@@ -159,11 +165,20 @@ def _is_transient(exc: BaseException) -> bool:
     )
 
 
+def _http_get_json(url: str) -> dict[str, Any]:
+    with urllib.request.urlopen(url, timeout=10) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
 class OpenAICompatAdapter:
     """Chat-completions adapter for OpenAI and anything that speaks its API (vLLM, etc.).
 
     ``base_url`` is part of ``name`` when set, because the same model string behind a
-    different server is a different model as far as a run id is concerned.
+    different server is a different model as far as a run id is concerned. ``name`` can be
+    given outright; config-driven vLLM runs use the model config's id and content hash.
+
+    Non-standard request parameters (``top_k``, ``min_p``, ``chat_template_kwargs``) travel
+    under ``params["extra_body"]``, which the OpenAI SDK merges into the request JSON.
     """
 
     def __init__(
@@ -174,24 +189,69 @@ class OpenAICompatAdapter:
         api_key: str | None = None,
         client: Any | None = None,
         max_attempts: int = 5,
+        name: str | None = None,
+        http_get_json: Callable[[str], dict[str, Any]] | None = None,
     ) -> None:
         self.model = model
         self.base_url = base_url or os.environ.get("OPENAI_BASE_URL") or None
         self._api_key = api_key
         self._client = client
         self._max_attempts = max_attempts
-        self.name = f"openai:{model}" + (f"@{self.base_url}" if self.base_url else "")
+        self._http_get_json = http_get_json or _http_get_json
+        self._server_info: dict[str, Any] | None = None
+        self.name = name or (f"openai:{model}" + (f"@{self.base_url}" if self.base_url else ""))
+
+    @classmethod
+    def from_model_config(
+        cls, config: ModelConfig, *, base_url: str | None = None, **kwargs: Any
+    ) -> OpenAICompatAdapter:
+        return cls(
+            config.served_model_name,
+            base_url=base_url or config.base_url,
+            name=config.adapter_name,
+            **kwargs,
+        )
+
+    @property
+    def is_local(self) -> bool:
+        return is_local_url(self.base_url)
 
     @property
     def client(self) -> Any:
         if self._client is None:
             from openai import OpenAI  # imported lazily: never needed by tests
 
-            self._client = OpenAI(
-                api_key=self._api_key or os.environ.get("OPENAI_API_KEY"),
-                base_url=self.base_url,
+            # a local vLLM server ignores the key, but the SDK insists on a non-empty one
+            key = (
+                self._api_key
+                or os.environ.get("OPENAI_API_KEY")
+                or ("EMPTY" if self.is_local else None)
             )
+            self._client = OpenAI(api_key=key, base_url=self.base_url)
         return self._client
+
+    def server_info(self) -> dict[str, Any]:
+        """Served model name and vLLM version, asked once. Only a local server is asked.
+
+        Never raises: whatever could not be found out is recorded as None.
+        """
+        if self._server_info is None:
+            info: dict[str, Any] = {"base_url": self.base_url, "requested_model": self.model}
+            if self.is_local:
+                root = (self.base_url or "").rstrip("/").removesuffix("/v1")
+                try:
+                    models = self._http_get_json(f"{root}/v1/models")
+                    info["served_models"] = [m.get("id") for m in models.get("data", [])]
+                except Exception as exc:
+                    info["served_models"] = None
+                    info["models_error"] = f"{type(exc).__name__}: {exc}"
+                try:
+                    info["vllm_version"] = self._http_get_json(f"{root}/version").get("version")
+                except Exception as exc:
+                    info["vllm_version"] = None
+                    info["version_error"] = f"{type(exc).__name__}: {exc}"
+            self._server_info = info
+        return dict(self._server_info)
 
     def generate(
         self, messages: list[Message], tools: list[dict[str, Any]], params: dict[str, Any]
@@ -229,8 +289,13 @@ class OpenAICompatAdapter:
                 completion_tokens=getattr(response.usage, "completion_tokens", None),
                 cached_tokens=getattr(details, "cached_tokens", None) if details else None,
             )
+        # vLLM renamed reasoning_content to reasoning; accept either
+        reasoning = getattr(message, "reasoning", None) or getattr(
+            message, "reasoning_content", None
+        )
         return AdapterResponse(
             content=message.content,
+            reasoning=reasoning if isinstance(reasoning, str) else None,
             tool_calls=tool_calls,
             usage=usage,
             finish_reason=choice.finish_reason,

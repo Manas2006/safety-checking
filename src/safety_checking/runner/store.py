@@ -19,7 +19,8 @@ from ..paths import runs_dir
 from ..scoring import Score
 from ..trajectory import Trajectory
 
-SCORER_VERSION = 1
+#: 2: added the tool_call_parse_failure outcome, parse_failures and truncated
+SCORER_VERSION = 2
 
 
 def compute_run_id(

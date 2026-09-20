@@ -5,6 +5,8 @@ A cell is (scenario, length, prior_check_pattern). A run is one sample of one ce
 
 from __future__ import annotations
 
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +18,7 @@ from ..history.store import save_prefix
 from ..scenarios.loader import load_scenario, load_scenario_world
 from ..scenarios.schema import Scenario
 from ..scoring import score
+from ..trajectory import Trajectory
 from .adapters import ModelAdapter
 from .loop import MAX_STEPS, run_decision
 from .store import RunRecord, append_record, completed_run_ids, compute_run_id
@@ -49,6 +52,11 @@ class ExperimentSpec(BaseModel):
     arm: str = "baseline"
     params: dict[str, Any] = Field(default_factory=dict)
     max_steps: int = MAX_STEPS
+    #: samples of one prefix in flight at once. The first sample of a cell always goes alone,
+    #: so the rest arrive at a warm prefix cache.
+    concurrency: int = 1
+    #: per-request seed is base_seed + sample_index. None sends no seed.
+    base_seed: int | None = None
 
 
 def build_cells(
@@ -149,24 +157,53 @@ class RunSummary(BaseModel):
     n_new: int = 0
     n_skipped: int = 0
     n_errors: int = 0
+    #: wall-clock seconds spent in this invocation, and provider-reported tokens for new runs
+    elapsed_s: float = 0.0
+    prompt_tokens: int = 0
+    cached_tokens: int = 0
+    completion_tokens: int = 0
+
+    @property
+    def completion_tokens_per_s(self) -> float | None:
+        return self.completion_tokens / self.elapsed_s if self.elapsed_s > 0 else None
+
+
+def _batches(todo: list[int], concurrency: int) -> list[list[int]]:
+    """The first sample alone, to warm the prefix cache, then the rest ``concurrency`` wide."""
+    if not todo:
+        return []
+    if concurrency <= 1:
+        return [[i] for i in todo]
+    rest = todo[1:]
+    return [[todo[0]]] + [rest[i : i + concurrency] for i in range(0, len(rest), concurrency)]
 
 
 def run_experiment(
     spec: ExperimentSpec, adapter: ModelAdapter, log_path: Path, cells: list[Cell]
 ) -> RunSummary:
-    """Run every sample that is not already in the log. Safe to interrupt and re-run."""
+    """Run every sample that is not already in the log. Safe to interrupt and re-run.
+
+    Samples of one cell share a prefix, so they are sent together (``spec.concurrency`` wide)
+    to share the server's prefix cache. Records are appended from this thread only, in sample
+    order within a batch, so the log stays well formed.
+    """
     done = completed_run_ids(log_path)
     summary = RunSummary()
+    started = time.perf_counter()
+
     for cell in cells:
         world = load_scenario_world(cell.scenario)
-        for sample_index in range(spec.n_samples):
-            run_id = compute_run_id(
+        if hasattr(adapter, "bind"):
+            adapter.bind(cell.scenario)  # once, before any thread starts
+
+        def run_id_of(sample_index: int, cell: Cell = cell) -> str:
+            return compute_run_id(
                 cell.prefix.prefix_hash, adapter.name, spec.arm, spec.params, sample_index
             )
-            if run_id in done:
-                summary.n_skipped += 1
-                continue
-            trajectory = run_decision(
+
+        def sample(sample_index: int, cell: Cell = cell) -> Trajectory:
+            seed = None if spec.base_seed is None else spec.base_seed + sample_index
+            return run_decision(
                 cell.scenario,
                 cell.prefix,
                 adapter,
@@ -174,13 +211,33 @@ def run_experiment(
                 params=spec.params,
                 sample_index=sample_index,
                 max_steps=spec.max_steps,
+                seed=seed,
             )
-            scored = None
-            if trajectory.stop_reason == "error":
-                summary.n_errors += 1
+
+        todo = [i for i in range(spec.n_samples) if run_id_of(i) not in done]
+        summary.n_skipped += spec.n_samples - len(todo)
+
+        for batch in _batches(todo, spec.concurrency):
+            if len(batch) == 1:
+                trajectories = [sample(batch[0])]
             else:
-                scored = score(trajectory, cell.scenario, world)
-                done.add(run_id)
-            append_record(log_path, RunRecord(run_id=run_id, trajectory=trajectory, score=scored))
-            summary.n_new += 1
+                with ThreadPoolExecutor(max_workers=len(batch)) as pool:
+                    trajectories = list(pool.map(sample, batch))
+            for trajectory in trajectories:
+                scored = None
+                if trajectory.stop_reason == "error":
+                    summary.n_errors += 1
+                else:
+                    scored = score(trajectory, cell.scenario, world)
+                    done.add(trajectory.run_id)
+                    summary.prompt_tokens += scored.usage_prompt_tokens or 0
+                    summary.cached_tokens += scored.usage_cached_tokens or 0
+                    summary.completion_tokens += scored.usage_completion_tokens or 0
+                append_record(
+                    log_path,
+                    RunRecord(run_id=trajectory.run_id, trajectory=trajectory, score=scored),
+                )
+                summary.n_new += 1
+
+    summary.elapsed_s = time.perf_counter() - started
     return summary

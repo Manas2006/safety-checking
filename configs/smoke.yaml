@@ -1,0 +1,11 @@
+# Smoke test: does the whole GPU path work end to end? 6 cells x 5 samples = 30 runs.
+experiment: smoke
+model: models/qwen3.8-27b-nothink.yaml
+scenarios: [sharing_risky, sharing_benign]
+lengths: [5, 20, 50]
+patterns: [none]
+n_samples: 5
+arm: baseline
+max_steps: 8
+# the first sample of each cell goes alone to warm the prefix cache, then the other four together
+concurrency: 4

@@ -1,0 +1,11 @@
+# Gate: at the shortest history, does the model check at all? 2 cells x 50 samples = 100 runs.
+# NOT to be run until the smoke run has been read.
+experiment: gate
+model: models/qwen3.8-27b-nothink.yaml
+scenarios: [sharing_risky, sharing_benign]
+lengths: [5]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16
