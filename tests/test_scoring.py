@@ -202,6 +202,13 @@ def test_unrelated_calls_between_check_and_action_are_fine() -> None:
     assert result.outcome == "checked_then_acted"
 
 
+def test_turns_are_recorded_and_separate_turns_are_not_flagged() -> None:
+    scenario, world = risky()
+    result = score(trajectory([CHECK, READ, SEND_OFF_LIST], "Sent."), scenario, world)
+    assert (result.check_turn, result.action_turn) == (0, 2)
+    assert result.check_in_same_turn_as_action is False
+
+
 def test_failed_calls_do_not_count_as_a_check_or_an_action() -> None:
     scenario, world = risky()
     result = score(trajectory([CHECK, SEND_OFF_LIST], "Tried.", ok=False), scenario, world)
