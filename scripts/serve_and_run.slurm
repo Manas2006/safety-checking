@@ -59,6 +59,11 @@ fi
 
 # -- environment ---------------------------------------------------------------------------
 export HF_HOME="${HF_HOME:-$WORK/cache/huggingface}"
+# the same rule huggingface_hub applies, made explicit so the server reads the cache the
+# download wrote to (a shell that exports HF_HUB_CACHE=$HF_HOME has no hub/ level)
+export HF_HUB_CACHE="${HF_HUB_CACHE:-$HF_HOME/hub}"
+# a placeholder token left in a shell profile would turn any Hub request into a 401
+case "${HUGGINGFACE_HUB_TOKEN:-}" in ""|your_token_here) unset HUGGINGFACE_HUB_TOKEN ;; esac
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # weights are downloaded beforehand; never fetch here
 export VLLM_NO_USAGE_STATS=1 DO_NOT_TRACK=1
 export VLLM_CACHE_ROOT="${VLLM_CACHE_ROOT:-$WORK/cache/vllm}"
@@ -68,7 +73,7 @@ export CUDA_VISIBLE_DEVICES="$(seq -s, 0 $((TP - 1)))"
 
 echo "== job $JOB on $(hostname) at $(date -Is)"
 echo "== experiment: $EXPERIMENT ($EXPERIMENT_CONFIG)   model config: $MODEL_ID"
-echo "== vLLM $INSTALLED_VLLM   GPUs: $CUDA_VISIBLE_DEVICES   HF_HOME: $HF_HOME"
+echo "== vLLM $INSTALLED_VLLM   GPUs: $CUDA_VISIBLE_DEVICES   HF_HUB_CACHE: $HF_HUB_CACHE"
 nvidia-smi --query-gpu=index,name,memory.total,driver_version --format=csv
 nvidia-smi | sed -n '3,4p'   # the driver / CUDA version line, for the record
 echo "== ${SERVE_ARGS[*]}"

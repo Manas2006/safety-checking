@@ -27,4 +27,5 @@ export UV_CONCURRENT_DOWNLOADS=1 UV_CONCURRENT_INSTALLS=1 UV_CONCURRENT_BUILDS=1
 export HF_HUB_DISABLE_XET=1 HF_HUB_DOWNLOAD_TIMEOUT=60
 uvx --from "huggingface_hub>=0.34" hf download "$REPO" --revision "$REVISION" --max-workers 4
 
-du -sh "$HF_HOME/hub/models--${REPO//\//--}"
+# huggingface_hub uses HF_HUB_CACHE when it is set, and only otherwise $HF_HOME/hub
+du -sh "${HF_HUB_CACHE:-$HF_HOME/hub}/models--${REPO//\//--}"
