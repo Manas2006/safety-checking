@@ -56,6 +56,7 @@ Real runs are open-weights models served by vLLM on LS6 GPU nodes (`gpu-a100*`: 
 `gpu-h100`: 2x H100 80 GB), not a paid API. See SPEC.md 3.9.
 
 ```bash
+sbatch -A <allocation> scripts/build_llguidance.slurm  # once: the wheel glibc 2.28 needs
 scripts/setup_vllm_env.sh cu129                        # once, login node, install only
 scripts/download_weights.sh configs/models/<m>.yaml    # once; large; Manas runs this himself
 uv run sc serve-args configs/smoke.yaml                # the exact vllm serve command

@@ -71,6 +71,13 @@ export TOKENIZERS_PARALLELISM=false
 # use exactly as many GPUs as the config asks for (an A100 node has 3, tensor parallel is 2)
 export CUDA_VISIBLE_DEVICES="$(seq -s, 0 $((TP - 1)))"
 
+# With -n 1 Slurm pins this script, and everything it starts, to a single core (the probe job
+# saw nproc=1 on a 128-core node). The node is allocated whole, so widen the affinity to all of
+# it; otherwise vLLM's tensor-parallel workers, tokenizer and API server share one core.
+ALL_CPUS="$(nproc --all)"
+taskset -pc "0-$((ALL_CPUS - 1))" $$ >/dev/null 2>&1 || echo "note: could not widen CPU affinity"
+echo "== cpus usable: $(nproc) of $ALL_CPUS"
+
 echo "== job $JOB on $(hostname) at $(date -Is)"
 echo "== experiment: $EXPERIMENT ($EXPERIMENT_CONFIG)   model config: $MODEL_ID"
 echo "== vLLM $INSTALLED_VLLM   GPUs: $CUDA_VISIBLE_DEVICES   HF_HUB_CACHE: $HF_HUB_CACHE"

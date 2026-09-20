@@ -89,8 +89,11 @@ configs/
   models/           one YAML per served model (nothing about a model lives in code)
   smoke.yaml        6 cells x 5 samples; gate.yaml: 2 cells x 50 samples
 scripts/
+  probe_gpu_node.slurm  driver, CUDA, GPUs, glibc, reachability from a compute node
+  build_llguidance.slurm  compile the one wheel PyPI cannot supply for glibc 2.28
   setup_vllm_env.sh     the serving venv at $WORK/venvs/vllm (login node: install only)
-  download_weights.sh   weights into $HF_HOME under $WORK
+  download_weights.sh   weights into the HF cache under $WORK
+  verify_weights.py     every shard in the index present at the size the Hub reports
   serve_and_run.slurm   one GPU node: serve, health-check, render, run, always shut down
 ```
 
@@ -306,6 +309,31 @@ driver 580+. vLLM also publishes a `cu129` wheel, which runs on any CUDA 12.x dr
 minor-version compatibility. `scripts/setup_vllm_env.sh` takes the variant as an argument and
 must be chosen from the `nvidia-smi` header on a GPU node. If neither loads, the fallback is the
 official container through `tacc-apptainer`, pulled and run on a compute node only.
+
+Probed on 2026-09-20 (`scripts/probe_gpu_node.slurm`, node c301-004): driver 570.195.03, CUDA
+12.8, 3x A100-PCIE-40GB (compute capability 8.0), glibc 2.28, 250 GB host memory;
+`huggingface.co` and `pypi.org` both reachable from the compute node. So the wheel is **cu129**.
+
+**glibc 2.28 and `llguidance`.** LS6 is RHEL 8, glibc 2.28, on login and compute nodes alike.
+vLLM 0.29.0 requires `llguidance>=1.7.0,<1.8.0`, and every 1.7.x wheel on PyPI for x86_64 is
+tagged `manylinux_2_31`, so none is usable here. A wheels-only dry run showed it is the *only*
+package of the 194 in the tree with this problem. Compiling it on the login node is impossible
+(the 8 GB virtual-memory cap crashes `rustc`), so it is built once on a CPU compute node by
+`scripts/build_llguidance.slurm` into `$WORK/wheels/`, and `setup_vllm_env.sh` installs from
+that folder with `--find-links` and `--only-binary llguidance`. The environment can
+therefore be rebuilt at any time without recompiling, and a missing wheel fails the install at
+once rather than starting a Rust build under the memory cap. The wheel built on 2026-09-20 is
+`llguidance-1.7.6-cp39-abi3-linux_x86_64.whl` (sha256 `2bd531a9...572a49`, stored beside it);
+the newest glibc symbol its extension needs is `GLIBC_2.28`. vLLM's declared dependency set is
+met exactly: no override is in use. (`--llguidance-override`, which pins 1.6.1 from outside
+vLLM's range, exists as a fallback and was not needed. `llguidance` backs a structured-output
+backend these runs never exercise, since `tool_choice=auto` is parsed after the fact.)
+
+**The HF cache has no `hub/` level on this account.** `huggingface_hub` keeps models in
+`HF_HUB_CACHE` when that is set and only otherwise in `$HF_HOME/hub`. This account's shell
+exports `HF_HUB_CACHE=$HF_HOME`. Every script resolves the cache by the library's own rule
+instead of assuming `hub/`; the job script exports it explicitly so the server reads what the
+download wrote.
 
 **Model config.** One YAML per served model (`configs/models/`): repo and pinned revision,
 vLLM version, tensor parallel size, max model length, dtype, seed, tool and reasoning parser
