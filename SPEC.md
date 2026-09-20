@@ -1,7 +1,9 @@
 # SPEC: safety-check execution over long horizons
 
-Status: v0.1, written before the code. Phase B (deterministic core) implements everything
-described here. Anything not yet implemented is marked TODO.
+Status: v0.2. Sections 1 to 3 were written before the code; Phase B (the deterministic core)
+now implements all of it, and the spec has been updated where building it changed the design
+(decision 13, the same-turn flag in 3.6). Not implemented: the Anthropic adapter (a stub), any
+analysis code, and the second risk family.
 
 ## 1. Research question
 
@@ -65,13 +67,16 @@ src/safety_checking/
     plan.py         HistoryPlan: which episodes make up each length
     builder.py      builds and validates a prefix, executes calls against the world
     store.py        save/load prefixes under outputs/prefixes/<hash>.json
+  trajectory.py     Trajectory, Step, ToolCallRecord, Usage: written by the runner, read by
+                    the scorer
   scoring.py        pure (trajectory, scenario) -> Score
   runner/
     adapters.py     ModelAdapter protocol, FakeModel, OpenAI-compatible, Anthropic stub
     loop.py         decision loop (restore snapshot, up to 8 steps)
     store.py        run_id computation, JSONL append, resume
+    experiment.py   cells, dry run, resumable execution over a whole experiment
   viewer.py         render one trajectory as markdown
-  cli.py            sc build-prefixes | run | show | tools
+  cli.py            sc tools | build-prefixes | run | show | counts
   data/
     worlds/         initial world states (YAML)
     scenarios/      scenario definitions (YAML)
@@ -232,21 +237,38 @@ Pure function `score(trajectory, scenario) -> Score`, over the decision segment 
 
 Decision loop: restore the world snapshot, append the decision request, then up to 8 steps. Each
 step executes any tool calls against the world and appends the results. The loop stops when the
-model returns no tool calls, or at the step cap.
+model returns no tool calls, or at the step cap. Malformed tool arguments and unknown tools
+become error results, not exceptions. The adapter is handed a copy of the context, never the
+loop's own list. The stored trajectory holds the decision segment only; the prefix is referenced
+by hash.
 
 `run_id = sha256(prefix_hash, model, arm, params, sample_index)`. Trajectories are appended to
 `outputs/runs/<experiment>.jsonl`; run ids already present in the file are skipped, which makes
-runs resumable and idempotent. `--dry-run` prints the cell counts and a rough token estimate and
-makes no calls.
+runs resumable and idempotent. An adapter failure is logged with `stop_reason="error"` and is
+*not* counted as done, so it is retried on the next pass; readers take the last successful
+record per run id. Each record also carries a convenience copy of the score and a
+`scorer_version`, but scoring is pure, so the analysis can always rescore from the trajectory.
+
+`--dry-run` prints the cell counts, how many runs are already done, and a rough token estimate
+(prefix plus tool specs, times an assumed three steps per run, with no prompt caching: an upper
+bound), and makes no calls. It works for real model specs without a key, because clients are
+created lazily. `sc run` refuses any non-fake model without `--confirm-paid`.
 
 Adapters: `FakeModel` with `always_check` and `never_check` policies for tests; an
-OpenAI-compatible adapter with a configurable `base_url` (tested only against a mocked client);
-an Anthropic adapter that is a stub raising `NotImplementedError`.
+OpenAI-compatible adapter with a configurable `base_url` (tested only against a mocked client),
+which retries rate limits, timeouts and 5xx but never a 4xx, and which puts `base_url` into its
+name so the same model string behind another server gets different run ids; an Anthropic adapter
+that is a stub raising `NotImplementedError`. An adapter may define `bind(scenario)`; the runner
+calls it when present. Only the fake models need it.
 
 ### 3.8 Trace viewer
 
-`sc show <jsonl> --run-id ...` renders one trajectory as markdown: prefix collapsed to a
-summary, decision segment in full, score appended.
+`sc show <jsonl> --index N | --run-id PREFIX` renders one trajectory as markdown: the prefix
+collapsed to a one-line summary plus its shared five-call tail (`--full-prefix` expands it), the
+decision segment in full, and the score.
+
+`sc counts <jsonl>` prints outcome counts per (model, scenario, length, pattern). Counts only:
+it never prints a rate, because rates are defined in PREREG.md.
 
 ## 4. Decisions
 
