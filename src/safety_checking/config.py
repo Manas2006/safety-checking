@@ -86,6 +86,18 @@ class LogprobFormat(_Model):
     name_terminator: str
 
 
+class DownloadConfig(_Model):
+    """Which files of the repo ``scripts/download_weights.sh`` skips.
+
+    Some repos carry the same weights twice (gpt-oss: ``original/`` and ``metal/``; Ministral:
+    ``consolidated.safetensors`` next to the sharded files). Left out of the config hash: it
+    decides what is on disk, not what is served.
+    """
+
+    #: glob patterns, passed to ``hf download --exclude``
+    exclude: list[str] = Field(default_factory=list)
+
+
 class ModelConfig(_Model):
     id: str
     hf_repo: str
@@ -94,6 +106,7 @@ class ModelConfig(_Model):
     serve: ServeConfig
     request: RequestConfig = Field(default_factory=RequestConfig)
     logprob: LogprobFormat | None = None
+    download: DownloadConfig = Field(default_factory=DownloadConfig)
     notes: str = ""
 
     @property
@@ -102,7 +115,8 @@ class ModelConfig(_Model):
 
     @property
     def content_hash(self) -> str:
-        return short_hash(self.model_dump(mode="json", exclude={"notes", "logprob"}), 12)
+        unhashed = {"notes", "logprob", "download"}
+        return short_hash(self.model_dump(mode="json", exclude=unhashed), 12)
 
     @property
     def adapter_name(self) -> str:
@@ -229,18 +243,29 @@ def load_model_config(path: str | Path) -> ModelConfig:
     return ModelConfig.model_validate(_load_yaml(Path(path)))
 
 
-def load_experiment_config(path: str | Path) -> tuple[ExperimentConfig, ModelConfig]:
-    """Load an experiment config and the model config it points at."""
+def load_experiment_config(
+    path: str | Path, model_config: str | Path | None = None
+) -> tuple[ExperimentConfig, ModelConfig]:
+    """Load an experiment config and its model config.
+
+    The model is the one the experiment names, unless ``model_config`` names another: the same
+    experiment is run against every model, and the model is in the run id, not the experiment.
+    """
     path = Path(path)
     experiment = ExperimentConfig.model_validate(_load_yaml(path))
-    return experiment, load_model_config(path.parent / experiment.model)
+    model_path = Path(model_config) if model_config else path.parent / experiment.model
+    return experiment, load_model_config(model_path)
 
 
-def load_any(path: str | Path) -> tuple[ExperimentConfig | None, ModelConfig]:
+def load_any(
+    path: str | Path, model_config: str | Path | None = None
+) -> tuple[ExperimentConfig | None, ModelConfig]:
     """Accept either kind of YAML: an experiment config (which names its model) or a model."""
     path = Path(path)
     if "experiment" in _load_yaml(path):
-        return load_experiment_config(path)
+        return load_experiment_config(path, model_config)
+    if model_config:
+        raise ValueError(f"{path} is a model config already; a model override makes no sense")
     return None, load_model_config(path)
 
 

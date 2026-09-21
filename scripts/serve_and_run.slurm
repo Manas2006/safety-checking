@@ -1,19 +1,22 @@
 #!/bin/bash
 # Serve one model with vLLM on one GPU node, run one experiment config against it, shut down.
 #
-#   sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml [run|logprob|both]
+#   sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml [run|logprob|both] [model.yaml]
 #
 # The optional second argument picks what runs against the server: `run` (the default) samples
 # decisions, `logprob` reads next-call distributions (SPEC.md 3.10), `both` does one then the
-# other on the same server start.
+# other on the same server start. The optional third argument is a model YAML to use instead of
+# the one the experiment names, so one experiment config serves every model:
+#
+#   sbatch -A <allocation> -p gpu-h100 scripts/serve_and_run.slurm configs/smoke.yaml run configs/models/gpt-oss-120b.yaml
 #
 # Submit from the repository root. The allocation is never written here; pass it with -A.
 # Queue and time limit below are the defaults for short tests and can be overridden on the
-# sbatch command line (-p gpu-a100 -t 02:00:00).
+# sbatch command line (-p gpu-a100 -t 02:00:00). A model YAML's header says which partition it
+# was sized for: the script cannot choose one, because #SBATCH lines are read before it runs.
 #
 # Nothing about the model is hard-coded: the vllm serve command line, the port, the startup
-# timeout and the pinned vLLM version all come from the model YAML named by the experiment YAML
-# (see `sc serve-args`). The server binds to localhost only and is always shut down, including
+# timeout and the pinned vLLM version all come from the model YAML (see `sc serve-args`). The server binds to localhost only and is always shut down, including
 # when anything below fails or the job is cancelled.
 #
 #SBATCH -J sc-serve
@@ -26,8 +29,10 @@
 
 set -euo pipefail
 
-EXPERIMENT_CONFIG="${1:?usage: sbatch -A <allocation> scripts/serve_and_run.slurm <experiment.yaml> [run|logprob|both]}"
+EXPERIMENT_CONFIG="${1:?usage: sbatch -A <allocation> scripts/serve_and_run.slurm <experiment.yaml> [run|logprob|both] [model.yaml]}"
 MODE="${2:-run}"
+MODEL_ARGS=()
+if [ -n "${3:-}" ]; then MODEL_ARGS=(--model-config "$3"); fi
 case "$MODE" in run|logprob|both) ;; *) echo "unknown mode: $MODE (run|logprob|both)" >&2; exit 2 ;; esac
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 
@@ -44,7 +49,7 @@ mkdir -p "$LOG_DIR"
 
 # -- everything model-specific comes from YAML, read through `sc serve-args` ----------------
 # (which accepts the experiment YAML and follows it to the model YAML: no parsing done here)
-field() { "$SC" serve-args "$EXPERIMENT_CONFIG" --field "$1"; }
+field() { "$SC" serve-args "$EXPERIMENT_CONFIG" "${MODEL_ARGS[@]}" --field "$1"; }
 EXPERIMENT="$(field experiment.experiment)"
 MODEL_ID="$(field id)"
 HOST="$(field serve.host)"
@@ -53,7 +58,7 @@ TP="$(field serve.tensor_parallel_size)"
 STARTUP_TIMEOUT="$(field serve.startup_timeout_s)"
 PINNED_VLLM="$(field serve.vllm_version)"
 BASE_URL="http://$HOST:$PORT/v1"
-mapfile -t SERVE_ARGS < <("$SC" serve-args "$EXPERIMENT_CONFIG" --lines)
+mapfile -t SERVE_ARGS < <("$SC" serve-args "$EXPERIMENT_CONFIG" "${MODEL_ARGS[@]}" --lines)
 SERVE_ARGS[0]="$VLLM_VENV/bin/vllm"   # replace the bare "vllm" with the pinned environment's
 
 # the installed version must be the pinned one (package metadata only, nothing heavy imported)
@@ -74,13 +79,18 @@ export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # weights are downloaded before
 export VLLM_NO_USAGE_STATS=1 DO_NOT_TRACK=1
 export VLLM_CACHE_ROOT="${VLLM_CACHE_ROOT:-$WORK/cache/vllm}"
 export TOKENIZERS_PARALLELISM=false
+# gpt-oss only: openai_harmony downloads its vocabulary at start-up unless it finds the files
+# here (scripts/setup_harmony_encodings.sh puts them there). A path, not a serving choice.
+if [ -z "${TIKTOKEN_ENCODINGS_BASE:-}" ] && [ -d "$PWD/outputs/tiktoken_encodings" ]; then
+  export TIKTOKEN_ENCODINGS_BASE="$PWD/outputs/tiktoken_encodings"
+fi
 # use exactly as many GPUs as the config asks for (an A100 node has 3, tensor parallel is 2)
 export CUDA_VISIBLE_DEVICES="$(seq -s, 0 $((TP - 1)))"
 
 # serving choices that are environment variables come from the model YAML too
 while IFS= read -r kv; do
   [ -n "$kv" ] && export "$kv" && echo "== serve env: $kv"
-done < <("$SC" serve-args "$EXPERIMENT_CONFIG" --env)
+done < <("$SC" serve-args "$EXPERIMENT_CONFIG" "${MODEL_ARGS[@]}" --env)
 
 # Compute nodes have no nvcc on PATH. Nothing in the configured stack needs one (the FlashInfer
 # sampler, which did, is switched off in the model YAML), so by default the environment is left
@@ -191,7 +201,7 @@ echo "startup_seconds=$STARTUP_S" > "$TIMING"
 # Status 3 is different: the prompt does not fit max_model_len, every sample of that cell would
 # be refused with a 400, and there is nothing to learn from running it.
 RENDER_STATUS=0
-$SC render --config "$EXPERIMENT_CONFIG" --base-url "$BASE_URL" || RENDER_STATUS=$?
+$SC render --config "$EXPERIMENT_CONFIG" "${MODEL_ARGS[@]}" --base-url "$BASE_URL" || RENDER_STATUS=$?
 echo "render_status=$RENDER_STATUS" >> "$TIMING"
 if [ "$RENDER_STATUS" -eq 3 ]; then
   echo "== the longest prompt does not fit the model's context: not running the experiment" >&2
@@ -206,7 +216,7 @@ fi
 RUN_STATUS=0
 if [ "$MODE" = "run" ] || [ "$MODE" = "both" ]; then
   RUN_START=$(date +%s)
-  $SC run --config "$EXPERIMENT_CONFIG" --base-url "$BASE_URL" || RUN_STATUS=$?
+  $SC run --config "$EXPERIMENT_CONFIG" "${MODEL_ARGS[@]}" --base-url "$BASE_URL" || RUN_STATUS=$?
   echo "run_seconds=$(( $(date +%s) - RUN_START ))" >> "$TIMING"
   echo "run_status=$RUN_STATUS" >> "$TIMING"
   echo "== outcome counts"
@@ -216,7 +226,7 @@ fi
 if [ "$MODE" = "logprob" ] || [ "$MODE" = "both" ]; then
   LOGPROB_START=$(date +%s)
   LOGPROB_STATUS=0
-  $SC logprob --config "$EXPERIMENT_CONFIG" --base-url "$BASE_URL" || LOGPROB_STATUS=$?
+  $SC logprob --config "$EXPERIMENT_CONFIG" "${MODEL_ARGS[@]}" --base-url "$BASE_URL" || LOGPROB_STATUS=$?
   echo "logprob_seconds=$(( $(date +%s) - LOGPROB_START ))" >> "$TIMING"
   echo "logprob_status=$LOGPROB_STATUS" >> "$TIMING"
   [ "$RUN_STATUS" -eq 0 ] && RUN_STATUS=$LOGPROB_STATUS

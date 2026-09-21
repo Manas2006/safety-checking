@@ -127,7 +127,7 @@ def cmd_build_prefixes(args: argparse.Namespace) -> int:
 def _spec_and_adapter(args: argparse.Namespace) -> tuple[ExperimentSpec, ModelAdapter]:
     """From --config (an experiment YAML plus its model YAML), or from the command line."""
     if args.config:
-        experiment, model = load_experiment_config(args.config)
+        experiment, model = load_experiment_config(args.config, args.model_config)
         spec = ExperimentSpec(
             experiment=experiment.experiment,
             scenarios=experiment.scenarios,
@@ -142,6 +142,8 @@ def _spec_and_adapter(args: argparse.Namespace) -> tuple[ExperimentSpec, ModelAd
             max_model_len=model.serve.max_model_len,
         )
         return spec, OpenAICompatAdapter.from_model_config(model, base_url=args.base_url)
+    if args.model_config:
+        raise SystemExit("sc run: --model-config goes with --config, not with --model")
     if not args.model:
         raise SystemExit("sc run: give --config or --model")
     spec = _spec_from(args)
@@ -252,7 +254,7 @@ def cmd_serve_args(args: argparse.Namespace) -> int:
     Takes a model YAML or an experiment YAML (which names its model), so a job script needs no
     YAML parsing of its own. Fields are the model config's, plus ``experiment.*``.
     """
-    experiment, model = load_any(args.config)
+    experiment, model = load_any(args.config, args.model_config)
     if args.field:
         value: Any = model.model_dump(mode="json")
         if experiment is not None:
@@ -263,7 +265,9 @@ def cmd_serve_args(args: argparse.Namespace) -> int:
         except (KeyError, TypeError):
             console.print(f"[red]no such field: {args.field}[/red]")
             return 1
-        sys.stdout.write(f"{value}\n")
+        # a list prints one item per line (an empty one prints nothing), for `mapfile -t`
+        lines = value if isinstance(value, list) else [value]
+        sys.stdout.write("".join(f"{line}\n" for line in lines))
     elif args.env:
         # KEY=VALUE per line, for `while IFS= read -r kv; do export "$kv"; done`
         for key, value in sorted(model.serve.env.items()):
@@ -286,7 +290,7 @@ def cmd_render(args: argparse.Namespace) -> int:
     With no --scenario/--length/--pattern it renders the experiment's longest prompt: the one
     most likely to break a template or overrun the context, and a superset of the shorter ones.
     """
-    experiment, model = load_experiment_config(args.config)
+    experiment, model = load_experiment_config(args.config, args.model_config)
     candidates = []
     for name in [args.scenario] if args.scenario else experiment.scenarios:
         scenario = load_scenario(name)
@@ -353,7 +357,7 @@ def _print_logprob_table(path: Path) -> None:
 
 def cmd_logprob(args: argparse.Namespace) -> int:
     """Read the model's next-call distribution at every probe point (SPEC.md 3.10)."""
-    experiment, model = load_experiment_config(args.config)
+    experiment, model = load_experiment_config(args.config, args.model_config)
     path = logprob_log_path(experiment.experiment)
     if args.table:
         _print_logprob_table(path)
@@ -421,6 +425,9 @@ def cmd_counts(args: argparse.Namespace) -> int:
     return 0
 
 
+MODEL_CONFIG_HELP = "model YAML to use instead of the one the experiment names"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="sc", description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -437,6 +444,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_cell_options(run)
     run.add_argument("--model", help="fake:always_check | openai:<model> | ...")
     run.add_argument("--config", help="experiment YAML (names its model YAML); replaces --model")
+    run.add_argument("--model-config", help=MODEL_CONFIG_HELP)
     run.add_argument("--base-url", help="OpenAI-compatible endpoint, e.g. http://localhost:8000/v1")
     run.add_argument("--concurrency", type=int, default=1, help="samples of a prefix in flight")
     run.add_argument("--experiment", default="adhoc", help="name of the JSONL log")
@@ -453,6 +461,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     serve = commands.add_parser("serve-args", help="vllm serve command line for a model config")
     serve.add_argument("config", help="a model YAML, or an experiment YAML that names one")
+    serve.add_argument("--model-config", help=MODEL_CONFIG_HELP)
     serve.add_argument("--lines", action="store_true", help="one argument per line")
     serve.add_argument("--field", help="print one config field instead, e.g. serve.port")
     serve.add_argument("--env", action="store_true", help="print serve.env as KEY=VALUE lines")
@@ -460,6 +469,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     render = commands.add_parser("render", help="render a prefix through the chat template")
     render.add_argument("--config", required=True, help="experiment YAML")
+    render.add_argument("--model-config", help=MODEL_CONFIG_HELP)
     render.add_argument("--scenario", help="default: whichever of the config's is longest")
     render.add_argument("--length", type=int, help="default: the config's longest")
     render.add_argument("--pattern", choices=PRIOR_CHECK_PATTERNS)
@@ -468,6 +478,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     logprob = commands.add_parser("logprob", help="next-call distribution at each probe point")
     logprob.add_argument("--config", required=True, help="experiment YAML")
+    logprob.add_argument("--model-config", help=MODEL_CONFIG_HELP)
     logprob.add_argument("--base-url")
     logprob.add_argument("--table", action="store_true", help="print saved records, call nothing")
     logprob.set_defaults(func=cmd_logprob)
