@@ -103,8 +103,9 @@ on the `sbatch` line, the rest run on `gpu-a100*`. gpt-oss also needs
 `scripts/setup_harmony_encodings.sh` once (a local copy, no download).
 
 Everything about a model lives in `configs/models/*.yaml` and is hashed into every run id, so
-editing that file means new runs (`notes`, `logprob` and `download` are the three exceptions). Job logs, the vLLM log, timing and the run summary land in
-`outputs/logs/`; rendered prompts in `outputs/renders/`.
+editing that file means new runs (`notes`, `logprob` and `download` are the three exceptions).
+Job logs, the vLLM log, timing and the run summary land in `outputs/logs/`; rendered prompts in
+`outputs/renders/`.
 
 ## Conventions
 
