@@ -4,7 +4,8 @@
     .venv/bin/python scripts/verify_weights.py configs/models/qwen3.8-27b-nothink.yaml
 
 Complete means: the pinned snapshot exists in the HF cache, every shard named in
-``model.safetensors.index.json`` is present, each has the size the Hub reports for it (or, if the
+``model.safetensors.index.json`` (or the one ``model.safetensors`` of a repo without an index) is
+present, each has the size the Hub reports for it (or, if the
 Hub cannot be reached, a plausible size), nothing is left half-written, and the tokenizer and
 config files are there. Standard library plus the project's config loader only: safe on the
 login node, imports nothing heavy.
@@ -78,13 +79,18 @@ def main() -> int:
     if stale:
         print(f"note      {stale} stale .incomplete file(s) from an interrupted attempt; deletable")
 
+    expected = hub_sizes(model.hf_repo, model.revision or "main")
     index_path = snapshot / "model.safetensors.index.json"
-    if not index_path.exists():
+    if index_path.exists():
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        shards = sorted(set(index["weight_map"].values()))
+    elif expected is not None and "model.safetensors.index.json" not in expected:
+        # a model small enough for one file has no index (google/gemma-4-12B-it)
+        index = {}
+        shards = ["model.safetensors"]
+    else:
         print("INCOMPLETE: model.safetensors.index.json is not there yet")
         return 1
-    index = json.loads(index_path.read_text(encoding="utf-8"))
-    shards = sorted(set(index["weight_map"].values()))
-    expected = hub_sizes(model.hf_repo, model.revision or "main")
 
     total = 0
     present = 0
