@@ -81,6 +81,10 @@ done < <("$SC" serve-args "$EXPERIMENT_CONFIG" --env)
 # exactly as the node provides it. SC_EXPOSE_NVCC=1 points CUDA_HOME and PATH at the newest CUDA
 # 12 toolkit for a stack that JIT-compiles; it does not `module load`, which would also put the
 # toolkit's libraries ahead of the ones torch ships.
+# CAUTION: with CUDA_HOME set, vLLM's bundled deep_gemm imports successfully and initialises
+# CUDA in the parent process; vLLM then forks its workers, and their cuInit fails with "CUDA
+# unknown error" (the likely cause of job 3458684). If you turn this on, also put
+# VLLM_WORKER_MULTIPROC_METHOD=spawn in the model YAML's serve.env.
 if [ "${SC_EXPOSE_NVCC:-0}" = "1" ] && ! command -v nvcc >/dev/null 2>&1; then
   CUDA_HOME="${CUDA_HOME:-$(ls -d /opt/apps/cuda/12.* 2>/dev/null | sort -V | tail -n 1)}"
   if [ -n "$CUDA_HOME" ] && [ -x "$CUDA_HOME/bin/nvcc" ]; then

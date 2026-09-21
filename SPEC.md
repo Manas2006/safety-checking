@@ -342,13 +342,30 @@ the job script leaves the node's environment alone by default. `SC_EXPOSE_NVCC=1
 `CUDA_HOME` and `PATH` at `/opt/apps/cuda/12.*` for a stack that does JIT-compile; it never
 runs `module load cuda`, which would put the toolkit's libraries ahead of the ones torch ships.
 
-**Slurm hands out broken GPU nodes.** GPUs are not a tracked resource on these partitions
-(`Gres=(null)`), so a node with a GPU missing is scheduled as healthy. The second smoke job
-(3458684) landed on c301-002, where `nvidia-smi` listed 2 of the 3 A100s, and both workers
-died in `torch._C._cuda_init()` with "CUDA unknown error". The job script now checks the node
-before starting the server: it counts the GPUs present, then initialises CUDA and runs one
-operation on each device it will use, with the serving venv's Python. A failure exits with
-status 6 within seconds and prints the node name with the `--exclude=` to resubmit with.
+**The second failed start, and two explanations for it.** Smoke job 3458684 died at once: both
+workers failed in `torch._C._cuda_init()` with "CUDA unknown error", before loading anything.
+Two things differed from the first job, and the evidence does not separate them.
+
+1. *Our change (the more likely cause).* That job exported `CUDA_HOME`. In the first job, with no
+   `CUDA_HOME`, vLLM's bundled `deep_gemm` failed its import at `assert cuda_home is not None`
+   and its C extension never ran. With `CUDA_HOME` set, the import succeeded (its six warning
+   lines disappeared) and `_C.init(...)` ran in the parent server process; that extension links
+   `libcudart` and `libnvrtc` directly. vLLM starts workers with `fork` and only switches to
+   `spawn` when *torch* reports CUDA as initialised, so CUDA brought up by a third-party
+   extension is invisible to that check. Forked children of a process that has initialised CUDA
+   fail in `cuInit` with error 999, which is exactly this message. `deep_gemm`'s own source
+   warns that early CUDA initialisation "is incompatible with process forks".
+2. *The node.* It ran on c301-002, where `nvidia-smi` listed 2 of the 3 A100s (the first job's
+   node listed 3). GPUs are not a tracked Slurm resource on these partitions (`Gres=(null)`), so
+   such a node is scheduled as healthy. But devices 0 and 1, the two the job uses, were present.
+
+The third submission removed the export *and* excluded that node, so it covers both and
+distinguishes neither. The lesson is recorded as a rule: **do not set `CUDA_HOME` for the
+server.** It is what made nvcc exposure opt-in (`SC_EXPOSE_NVCC=1`), and anyone turning that on
+should also set `VLLM_WORKER_MULTIPROC_METHOD=spawn` in `serve.env`. Independently of which
+explanation is right, the job script now checks the node before starting the server: it counts
+the GPUs present, then initialises CUDA and runs one operation on each device it will use, in a
+separate short-lived process. A failure exits with status 6 in seconds and names the node.
 
 **CPU affinity.** Jobs get the whole node (`AllocCPUS=128`) but run with `-n 1`. `nproc` reports
 1 there, which proves nothing: GNU `nproc` honours `OMP_NUM_THREADS`, and TACC sets it to 1. The
