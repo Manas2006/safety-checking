@@ -22,8 +22,10 @@ esac
 REPO="$(.venv/bin/sc serve-args "$CONFIG" --field hf_repo)"
 REVISION="$(.venv/bin/sc serve-args "$CONFIG" --field revision)"
 mapfile -t EXCLUDE < <(.venv/bin/sc serve-args "$CONFIG" --field download.exclude)
+# one --exclude per pattern: after a single --exclude, `hf download` reads a second pattern as
+# a file name to fetch (it asked the Hub for "metal/*" and stopped)
 EXCLUDE_ARGS=()
-if [ "${#EXCLUDE[@]}" -gt 0 ]; then EXCLUDE_ARGS=(--exclude "${EXCLUDE[@]}"); fi
+for PATTERN in "${EXCLUDE[@]}"; do EXCLUDE_ARGS+=(--exclude "$PATTERN"); done
 echo "repo=$REPO revision=$REVISION exclude=${EXCLUDE[*]:-none} -> $HF_HOME"
 
 export UV_CONCURRENT_DOWNLOADS=1 UV_CONCURRENT_INSTALLS=1 UV_CONCURRENT_BUILDS=1
