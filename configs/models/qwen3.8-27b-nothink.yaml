@@ -66,5 +66,11 @@ request:
       enable_thinking: false
   base_seed: 0
 
+# Logprob mode (SPEC.md 3.10). The qwen3_xml wire format opens a call like this; the rendered
+# prompt from the smoke run confirms it. Not part of the config hash.
+logprob:
+  call_opener: "<tool_call>\n<function="
+  name_terminator: ">"
+
 notes: >-
   A100 (Ampere) has no FP8 kernels, hence BF16 rather than the FP8 checkpoint.

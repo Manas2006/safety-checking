@@ -119,16 +119,24 @@ def verify_rendering(text: str, messages: list[dict[str, Any]]) -> RenderReport:
     )
 
 
-def render_messages(
+def server_root(config: ModelConfig, base_url: str | None = None) -> str:
+    """The server's root URL, without the OpenAI ``/v1`` suffix."""
+    return (base_url or config.base_url).rstrip("/").removesuffix("/v1")
+
+
+def tokenize_chat(
     messages: list[dict[str, Any]],
     config: ModelConfig,
     *,
     base_url: str | None = None,
     post_json: PostJson | None = None,
-) -> tuple[str, int | None]:
-    """The exact prompt text the server builds, and its token count."""
+) -> list[int]:
+    """Token ids of the exact prompt the server builds from these messages.
+
+    Built by the server itself, with our tools and chat_template_kwargs and the generation
+    prompt appended, so it is the very sequence a chat completion would continue from.
+    """
     post = post_json or _http_post_json
-    root = (base_url or config.base_url).rstrip("/").removesuffix("/v1")
     payload: dict[str, Any] = {
         "model": config.served_model_name,
         "messages": messages,
@@ -138,10 +146,24 @@ def render_messages(
     kwargs = config.request.extra_body.get("chat_template_kwargs")
     if kwargs:
         payload["chat_template_kwargs"] = kwargs
-    tokenized = post(f"{root}/tokenize", payload)
-    tokens = tokenized["tokens"]
-    detokenized = post(f"{root}/detokenize", {"model": config.served_model_name, "tokens": tokens})
-    return detokenized["prompt"], tokenized.get("count", len(tokens))
+    return list(post(f"{server_root(config, base_url)}/tokenize", payload)["tokens"])
+
+
+def render_messages(
+    messages: list[dict[str, Any]],
+    config: ModelConfig,
+    *,
+    base_url: str | None = None,
+    post_json: PostJson | None = None,
+) -> tuple[str, int | None]:
+    """The exact prompt text the server builds, and its token count."""
+    post = post_json or _http_post_json
+    tokens = tokenize_chat(messages, config, base_url=base_url, post_json=post)
+    detokenized = post(
+        f"{server_root(config, base_url)}/detokenize",
+        {"model": config.served_model_name, "tokens": tokens},
+    )
+    return detokenized["prompt"], len(tokens)
 
 
 def render_prefix(

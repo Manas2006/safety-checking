@@ -71,6 +71,21 @@ class RequestConfig(_Model):
     base_seed: int | None = 0
 
 
+class LogprobFormat(_Model):
+    """How this model's tool-call format spells the start of a call (SPEC.md 3.10).
+
+    A property of the tool parser's wire format, so it lives with the model. It is left out
+    of the config hash: it changes nothing about how sampled runs are served, and the probe
+    spec is hashed into every logprob record id instead.
+    """
+
+    #: text a call starts with, up to where the tool name begins
+    call_opener: str
+    #: what follows the tool name. Scored together with the name, so that a name which is a
+    #: prefix of another, or merges with the next character at a token boundary, is handled.
+    name_terminator: str
+
+
 class ModelConfig(_Model):
     id: str
     hf_repo: str
@@ -78,6 +93,7 @@ class ModelConfig(_Model):
     served_model_name: str
     serve: ServeConfig
     request: RequestConfig = Field(default_factory=RequestConfig)
+    logprob: LogprobFormat | None = None
     notes: str = ""
 
     @property
@@ -86,7 +102,7 @@ class ModelConfig(_Model):
 
     @property
     def content_hash(self) -> str:
-        return short_hash(self.model_dump(mode="json", exclude={"notes"}), 12)
+        return short_hash(self.model_dump(mode="json", exclude={"notes", "logprob"}), 12)
 
     @property
     def adapter_name(self) -> str:
@@ -140,6 +156,23 @@ class ModelConfig(_Model):
         return shlex.join(self.serve_argv())
 
 
+class ProbeCall(_Model):
+    tool: str
+    #: string values may use $recipient_first_name, $recipient_id and $target_document
+    args: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProbePoint(_Model):
+    """A state at which logprob mode reads the model's next-call distribution.
+
+    ``calls`` is a scripted continuation of the decision segment, executed against the world
+    like a history episode. Empty means the decision start itself.
+    """
+
+    id: str
+    calls: list[ProbeCall] = Field(default_factory=list)
+
+
 class ExperimentConfig(_Model):
     experiment: str
     #: path to the model config, relative to this file
@@ -153,6 +186,8 @@ class ExperimentConfig(_Model):
     #: how many samples of one prefix are in flight at once. The first sample of a cell always
     #: goes alone, so the rest hit a warm prefix cache.
     concurrency: int = 1
+    #: logprob mode only; ignored by sampled runs and absent from their run ids
+    probe_points: list[ProbePoint] = Field(default_factory=lambda: [ProbePoint(id="start")])
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:

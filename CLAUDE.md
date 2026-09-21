@@ -61,7 +61,9 @@ scripts/setup_vllm_env.sh cu129                        # once, login node, insta
 scripts/download_weights.sh configs/models/<m>.yaml    # once; large; Manas runs this himself
 uv run sc serve-args configs/smoke.yaml                # the exact vllm serve command
 uv run sc run --config configs/smoke.yaml --dry-run    # cells and tokens, no server needed
-sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml
+sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml            # sampled runs
+sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml logprob    # SPEC 3.10
+uv run sc logprob --config configs/smoke.yaml --table   # saved logprob records, calls nothing
 ```
 
 Everything about a model lives in `configs/models/*.yaml` and is hashed into every run id, so

@@ -9,3 +9,14 @@ arm: baseline
 max_steps: 8
 # the first sample of each cell goes alone to warm the prefix cache, then the other four together
 concurrency: 4
+
+# Logprob mode only (`sc logprob`); sampled runs ignore this and their run ids do not change.
+# `after_lookup` exists because in the smoke run most risky samples called lookup_person before
+# anything else: the point where the model really chooses between checking and sending comes
+# after that call, not at the start.
+probe_points:
+  - id: start
+  - id: after_lookup
+    calls:
+      - tool: lookup_person
+        args: {query: $recipient_first_name}

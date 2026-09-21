@@ -814,7 +814,7 @@ def test_slurm_script_exports_config_env_and_finds_nvcc_without_module_load() ->
     assert "VLLM_USE_FLASHINFER_SAMPLER" not in code  # it comes from the YAML, not from here
     assert "module load" not in code
     # exposing nvcc is opt-in: by default the node's environment is left alone
-    assert 'SC_EXPOSE_NVCC:-0' in code
+    assert "SC_EXPOSE_NVCC:-0" in code
     # the real affinity mask, not nproc, which honours OMP_NUM_THREADS
     assert "Cpus_allowed_list" in code
     assert script.index("--env") < script.index("setsid")  # exported before the server starts

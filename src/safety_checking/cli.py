@@ -7,6 +7,7 @@ sc run --model fake:always_check run (resumable); paid models need --confirm-pai
 sc run --config configs/x.yaml   run an experiment config against a local vLLM server
 sc serve-args MODEL.yaml         the vllm serve command line for a model config
 sc render --config ...           render a prefix through the served chat template
+sc logprob --config ...          read the next-call distribution at each probe point
 sc show FILE --index 0           render one trajectory as markdown
 sc counts FILE                   outcome counts per cell (counts only, never rates)
 """
@@ -29,6 +30,7 @@ from .config import load_any, load_experiment_config
 from .history.builder import build_prefix, check_nesting
 from .history.plan import PRIOR_CHECK_PATTERNS, load_plan
 from .history.store import load_prefix
+from .logprob import LogprobError, logprob_log_path, read_logprob_records, run_logprob
 from .paths import outputs_dir, prefixes_dir
 from .render import render_prefix
 from .runner.adapters import ModelAdapter, OpenAICompatAdapter, make_adapter
@@ -263,6 +265,61 @@ def cmd_render(args: argparse.Namespace) -> int:
     return 0 if report.ok else 1
 
 
+def _print_logprob_table(path: Path) -> None:
+    """Plain tab-separated lines; probabilities in scientific notation, since they are small."""
+    header = ["scenario", "L", "pattern", "probe", "p_call_first", "p_check|call", "p_send|call"]
+    sys.stdout.write("\t".join([*header, "top other name", "unaccounted"]) + "\n")
+    records = sorted(
+        read_logprob_records(path),
+        key=lambda r: (r.scenario_id, r.probe_point, r.prior_check_pattern, r.length),
+    )
+    for r in records:
+        others = {
+            name: entry.p
+            for name, entry in r.p_name.items()
+            if entry.p not in (r.p_check_given_call, r.p_send_given_call)
+        }
+        top_other = max(others, key=others.get) if others else ""
+        row = [
+            r.scenario_id,
+            str(r.length),
+            r.prior_check_pattern,
+            r.probe_point,
+            f"{r.p_call_first:.4f}{'<' if r.p_call_first_bounded else ''}",
+            f"{r.p_check_given_call:.6f}",
+            f"{r.p_send_given_call:.3e}",
+            f"{top_other}={others.get(top_other, 0.0):.4f}" if top_other else "",
+            f"{r.unaccounted_mass:.2e}",
+        ]
+        sys.stdout.write("\t".join(row) + "\n")
+
+
+def cmd_logprob(args: argparse.Namespace) -> int:
+    """Read the model's next-call distribution at every probe point (SPEC.md 3.10)."""
+    experiment, model = load_experiment_config(args.config)
+    path = logprob_log_path(experiment.experiment)
+    if args.table:
+        _print_logprob_table(path)
+        return 0
+    adapter = OpenAICompatAdapter.from_model_config(model, base_url=args.base_url)
+    if not _is_free(adapter):
+        console.print("[red]logprob mode only runs against a localhost server.[/red]")
+        return 2
+    try:
+        summary = run_logprob(
+            experiment, model, path, base_url=args.base_url, server=adapter.server_info()
+        )
+    except LogprobError as exc:
+        console.print(f"[red]logprob mode failed:[/red] {exc}")
+        return 1
+    console.print(
+        f"{summary.n_new} new, {summary.n_skipped} skipped, {summary.n_requests} requests, "
+        f"{summary.elapsed_s:.1f}s -> {path}"
+    )
+    _print_logprob_table(path)
+    return 0
+
+
 def cmd_show(args: argparse.Namespace) -> int:
     records = latest_records(Path(args.file))
     if not records:
@@ -350,6 +407,12 @@ def build_parser() -> argparse.ArgumentParser:
     render.add_argument("--pattern", default="none", choices=PRIOR_CHECK_PATTERNS)
     render.add_argument("--base-url")
     render.set_defaults(func=cmd_render)
+
+    logprob = commands.add_parser("logprob", help="next-call distribution at each probe point")
+    logprob.add_argument("--config", required=True, help="experiment YAML")
+    logprob.add_argument("--base-url")
+    logprob.add_argument("--table", action="store_true", help="print saved records, call nothing")
+    logprob.set_defaults(func=cmd_logprob)
 
     show = commands.add_parser("show", help="render one trajectory as markdown")
     show.add_argument("file")

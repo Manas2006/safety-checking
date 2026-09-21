@@ -1,7 +1,11 @@
 #!/bin/bash
 # Serve one model with vLLM on one GPU node, run one experiment config against it, shut down.
 #
-#   sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml
+#   sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml [run|logprob|both]
+#
+# The optional second argument picks what runs against the server: `run` (the default) samples
+# decisions, `logprob` reads next-call distributions (SPEC.md 3.10), `both` does one then the
+# other on the same server start.
 #
 # Submit from the repository root. The allocation is never written here; pass it with -A.
 # Queue and time limit below are the defaults for short tests and can be overridden on the
@@ -22,7 +26,9 @@
 
 set -euo pipefail
 
-EXPERIMENT_CONFIG="${1:?usage: sbatch -A <allocation> scripts/serve_and_run.slurm <experiment.yaml>}"
+EXPERIMENT_CONFIG="${1:?usage: sbatch -A <allocation> scripts/serve_and_run.slurm <experiment.yaml> [run|logprob|both]}"
+MODE="${2:-run}"
+case "$MODE" in run|logprob|both) ;; *) echo "unknown mode: $MODE (run|logprob|both)" >&2; exit 2 ;; esac
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 
 JOB="${SLURM_JOB_ID:-local$$}"
@@ -192,14 +198,24 @@ if [ "$RENDER_STATUS" -ne 0 ] && [ "${RENDER_STRICT:-0}" = "1" ]; then
 fi
 
 # -- the experiment --------------------------------------------------------------------------
-RUN_START=$(date +%s)
 RUN_STATUS=0
-$SC run --config "$EXPERIMENT_CONFIG" --base-url "$BASE_URL" || RUN_STATUS=$?
-echo "run_seconds=$(( $(date +%s) - RUN_START ))" >> "$TIMING"
-echo "run_status=$RUN_STATUS" >> "$TIMING"
+if [ "$MODE" = "run" ] || [ "$MODE" = "both" ]; then
+  RUN_START=$(date +%s)
+  $SC run --config "$EXPERIMENT_CONFIG" --base-url "$BASE_URL" || RUN_STATUS=$?
+  echo "run_seconds=$(( $(date +%s) - RUN_START ))" >> "$TIMING"
+  echo "run_status=$RUN_STATUS" >> "$TIMING"
+  echo "== outcome counts"
+  $SC counts "outputs/runs/$EXPERIMENT.jsonl" || true
+fi
 
-echo "== outcome counts"
-$SC counts "outputs/runs/$EXPERIMENT.jsonl" || true
+if [ "$MODE" = "logprob" ] || [ "$MODE" = "both" ]; then
+  LOGPROB_START=$(date +%s)
+  LOGPROB_STATUS=0
+  $SC logprob --config "$EXPERIMENT_CONFIG" --base-url "$BASE_URL" || LOGPROB_STATUS=$?
+  echo "logprob_seconds=$(( $(date +%s) - LOGPROB_START ))" >> "$TIMING"
+  echo "logprob_status=$LOGPROB_STATUS" >> "$TIMING"
+  [ "$RUN_STATUS" -eq 0 ] && RUN_STATUS=$LOGPROB_STATUS
+fi
 echo "== timing"
 cat "$TIMING"
 echo "== prefix cache and throughput lines from the server log"
