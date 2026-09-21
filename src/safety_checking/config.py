@@ -52,6 +52,10 @@ class ServeConfig(_Model):
     startup_timeout_s: int = 1500
     #: anything else, passed through verbatim
     extra_args: list[str] = Field(default_factory=list)
+    #: environment variables for the server process. They belong here, not in the job script,
+    #: when they change how the model is served (a sampler or attention implementation), so
+    #: that they are hashed into the run id like every other serving choice.
+    env: dict[str, str] = Field(default_factory=dict)
 
 
 class RequestConfig(_Model):

@@ -228,6 +228,10 @@ def cmd_serve_args(args: argparse.Namespace) -> int:
             console.print(f"[red]no such field: {args.field}[/red]")
             return 1
         sys.stdout.write(f"{value}\n")
+    elif args.env:
+        # KEY=VALUE per line, for `while IFS= read -r kv; do export "$kv"; done`
+        for key, value in sorted(model.serve.env.items()):
+            sys.stdout.write(f"{key}={value}\n")
     elif args.lines:
         # one argument per line, for `mapfile -t ARGS < <(sc serve-args --lines ...)`
         sys.stdout.write("\n".join(model.serve_argv()) + "\n")
@@ -336,6 +340,7 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("config", help="a model YAML, or an experiment YAML that names one")
     serve.add_argument("--lines", action="store_true", help="one argument per line")
     serve.add_argument("--field", help="print one config field instead, e.g. serve.port")
+    serve.add_argument("--env", action="store_true", help="print serve.env as KEY=VALUE lines")
     serve.set_defaults(func=cmd_serve_args)
 
     render = commands.add_parser("render", help="render a prefix through the chat template")

@@ -148,6 +148,20 @@ def test_any_change_to_the_model_config_changes_the_adapter_name() -> None:
     assert noted.adapter_name == base.adapter_name
 
 
+def test_server_environment_comes_from_the_model_config_and_is_hashed(capsys) -> None:
+    config = load_model_config(MODEL_YAML)
+    # the native sampler: FlashInfer's needs nvcc at warm-up, which compute nodes lack
+    assert config.serve.env == {"VLLM_USE_FLASHINFER_SAMPLER": "0"}
+
+    assert cli.main(["serve-args", str(SMOKE_YAML), "--env"]) == 0
+    assert capsys.readouterr().out.splitlines() == ["VLLM_USE_FLASHINFER_SAMPLER=0"]
+
+    # a sampler implementation is a serving choice, so changing it means new run ids
+    raw = config.model_dump()
+    raw["serve"]["env"] = {}
+    assert ModelConfig.model_validate(raw).adapter_name != config.adapter_name
+
+
 def test_request_params_put_nonstandard_keys_under_extra_body() -> None:
     params = load_model_config(MODEL_YAML).request_params()
     assert params["temperature"] == 0.7
@@ -781,6 +795,17 @@ def test_slurm_script_polls_health_with_a_timeout_and_always_shuts_down() -> Non
     assert "setsid" in script  # own process group, so tensor-parallel workers die too
     assert "HF_HUB_OFFLINE=1" in script
     assert script.index("trap cleanup EXIT") < script.index("setsid")
+
+
+def test_slurm_script_exports_config_env_and_finds_nvcc_without_module_load() -> None:
+    script = SLURM.read_text()
+    code = "\n".join(line for line in script.splitlines() if not line.lstrip().startswith("#"))
+    assert "serve-args" in code and "--env" in code
+    assert "VLLM_USE_FLASHINFER_SAMPLER" not in code  # it comes from the YAML, not from here
+    assert "CUDA_HOME" in code and "module load" not in code
+    # the real affinity mask, not nproc, which honours OMP_NUM_THREADS
+    assert "Cpus_allowed_list" in code
+    assert script.index("--env") < script.index("setsid")  # exported before the server starts
 
 
 # -- no test, and no library code, imports torch or vllm -------------------------

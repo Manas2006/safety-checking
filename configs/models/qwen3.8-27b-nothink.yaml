@@ -41,6 +41,13 @@ serve:
     # text only: do not reserve memory for image or video inputs
     - --limit-mm-per-prompt
     - '{"image": 0, "video": 0}'
+  env:
+    # vLLM's default top-k/top-p sampler is FlashInfer's, which JIT-compiles a CUDA kernel at
+    # warm-up and needs nvcc. LS6 compute nodes have no nvcc on PATH, and the first smoke job
+    # died there (job 3458103). 0 selects vLLM's native PyTorch sampler: the same top-k/top-p
+    # distribution, a different implementation, so draws for a given seed differ. It is in the
+    # config, and so in every run id, because it is a sampling implementation choice.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
 
 request:
   sampling:

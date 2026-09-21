@@ -71,12 +71,29 @@ export TOKENIZERS_PARALLELISM=false
 # use exactly as many GPUs as the config asks for (an A100 node has 3, tensor parallel is 2)
 export CUDA_VISIBLE_DEVICES="$(seq -s, 0 $((TP - 1)))"
 
-# With -n 1 Slurm pins this script, and everything it starts, to a single core (the probe job
-# saw nproc=1 on a 128-core node). The node is allocated whole, so widen the affinity to all of
-# it; otherwise vLLM's tensor-parallel workers, tokenizer and API server share one core.
+# serving choices that are environment variables come from the model YAML too
+while IFS= read -r kv; do
+  [ -n "$kv" ] && export "$kv" && echo "== serve env: $kv"
+done < <("$SC" serve-args "$EXPERIMENT_CONFIG" --env)
+
+# Site detail, not a model choice: compute nodes have no nvcc on PATH, and anything in the stack
+# that JIT-compiles a CUDA kernel fails without one. Point at the newest CUDA 12 toolkit without
+# `module load`, which would also put its libraries ahead of the ones torch ships.
+if ! command -v nvcc >/dev/null 2>&1; then
+  CUDA_HOME="${CUDA_HOME:-$(ls -d /opt/apps/cuda/12.* 2>/dev/null | sort -V | tail -n 1)}"
+  if [ -n "$CUDA_HOME" ] && [ -x "$CUDA_HOME/bin/nvcc" ]; then
+    export CUDA_HOME PATH="$CUDA_HOME/bin:$PATH"
+  fi
+fi
+echo "== nvcc: $(command -v nvcc || echo none)"
+
+# The node is allocated whole (AllocCPUS=128), but with -n 1 the script may be bound to one
+# core. Widen the affinity to every core and log the real mask. Do not trust `nproc` here: it
+# honours OMP_NUM_THREADS, which TACC sets to 1, and so reports 1 whatever the affinity is.
 ALL_CPUS="$(nproc --all)"
+echo "== cpu affinity before: $(grep Cpus_allowed_list /proc/self/status | cut -f2)   OMP_NUM_THREADS=${OMP_NUM_THREADS:-unset}"
 taskset -pc "0-$((ALL_CPUS - 1))" $$ >/dev/null 2>&1 || echo "note: could not widen CPU affinity"
-echo "== cpus usable: $(nproc) of $ALL_CPUS"
+echo "== cpu affinity after:  $(grep Cpus_allowed_list /proc/self/status | cut -f2)   of $ALL_CPUS cpus"
 
 echo "== job $JOB on $(hostname) at $(date -Is)"
 echo "== experiment: $EXPERIMENT ($EXPERIMENT_CONFIG)   model config: $MODEL_ID"
