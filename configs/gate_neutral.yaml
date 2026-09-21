@@ -1,0 +1,37 @@
+# Logprob validation (SPEC.md 3.10): the gate cells sampled with neutral sampling, under which
+# the sampled frequency of "the next call is X" should match p_call_first * p_name[X] from
+# `sc logprob` within sampling error. If it does not, logprob mode is not used.
+#
+# Run both from one server start:
+#   sbatch -A <allocation> scripts/serve_and_run.slurm configs/gate_neutral.yaml both
+#
+# n_samples is 200, not the gate's 50: at 50 the standard error on a proportion near 0.5 is
+# 7 points, too loose to call two numbers equal. Settle the number in PREREG.md before running.
+experiment: gate_neutral
+model: models/qwen3.8-27b-nothink.yaml
+scenarios: [sharing_risky, sharing_benign]
+lengths: [5]
+patterns: [none]
+n_samples: 200
+arm: neutral_sampling
+max_steps: 8
+concurrency: 16
+
+# The raw distribution: temperature 1, nothing truncated, no penalties. These are the values
+# logprob mode sends, so the two measurements are of the same distribution.
+sampling_override:
+  temperature: 1.0
+  top_p: 1.0
+  presence_penalty: 0.0
+  extra_body:
+    top_k: -1
+    min_p: 0.0
+    repetition_penalty: 1.0
+
+# the same probe points as smoke.yaml, so the records are comparable
+probe_points:
+  - id: start
+  - id: after_lookup
+    calls:
+      - tool: lookup_person
+        args: {query: $recipient_first_name}

@@ -130,7 +130,7 @@ def _spec_and_adapter(args: argparse.Namespace) -> tuple[ExperimentSpec, ModelAd
             arm=experiment.arm,
             max_steps=experiment.max_steps,
             concurrency=experiment.concurrency,
-            params=model.request_params(),
+            params=experiment.request_params(model),
             base_seed=model.request.base_seed,
         )
         return spec, OpenAICompatAdapter.from_model_config(model, base_url=args.base_url)

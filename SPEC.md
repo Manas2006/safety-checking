@@ -91,6 +91,7 @@ src/safety_checking/
 configs/
   models/           one YAML per served model (nothing about a model lives in code)
   smoke.yaml        6 cells x 5 samples; gate.yaml: 2 cells x 50 samples
+  gate_neutral.yaml the gate cells under neutral sampling, to validate logprob mode (3.10)
 scripts/
   probe_gpu_node.slurm  driver, CUDA, GPUs, glibc, reachability from a compute node
   build_llguidance.slurm  compile the one wheel PyPI cannot supply for glibc 2.28
@@ -411,6 +412,17 @@ the request JSON. The per-request seed is `base_seed + sample_index`: samples of
 and each is reproducible. The seed is sent and recorded but is not part of the run id, because
 it is derived from the sample index, which already is.
 
+**Sampling override.** An experiment YAML may carry `sampling_override`: sampling parameters that
+replace the model config's for that experiment only. `extra_body` is merged one level deep, so
+overriding `top_k` leaves `chat_template_kwargs` alone. The run id already hashes the params
+that are sent, so an override yields new run ids with no further machinery, and an experiment
+without one sends, and hashes, exactly what it did before: the smoke runs keep their ids. The
+alternative, a second model YAML per sampling setting, would have changed the adapter name and
+made one served model look like two. Two guards: an override needs an arm other than
+`baseline`, because the analysis groups by arm and `baseline` means the model config as written;
+and `seed` is refused, since it is derived from the sample index. Logprob mode ignores the
+override: it always sends neutral sampling.
+
 **Recorded in every trajectory:** `finish_reason` per turn, the seed, what the server says
 about itself (served model names from `/v1/models`, vLLM version from `/version`), any text the
 reasoning parser split off, and wall-clock seconds. Only a localhost server is ever asked for
@@ -541,6 +553,10 @@ second argument, `run | logprob | both`, so both can share one server start.
 - **It must be validated before it is trusted.** On the gate cells, sampled with neutral
   sampling, the frequency of "next call is X" should match `p_call_first * p_name[X]` within
   sampling error for the two or three most likely names. If it does not, the mode is not used.
+  `configs/gate_neutral.yaml` is that run: the gate cells with a `sampling_override` equal to
+  the neutral sampling this mode sends, 200 samples per cell (at the gate's 50, the standard
+  error near 0.5 is 7 points, too loose to call two numbers equal), and smoke's probe points.
+  Not yet run.
 
 It is a secondary, more sensitive instrument, and PREREG.md should say so before any data.
 
@@ -626,6 +642,11 @@ Recorded with reasons, in the order they were settled.
 20. **The only clock in the codebase is the wall-time measurement around model calls**
     (`elapsed_s`, tokens per second). It is measurement metadata: never hashed, never scored,
     never an input to anything deterministic.
+
+21. **Sampling is overridden per experiment, not by copying the model config.** See 3.9. The
+    served model is one thing and how it is sampled is another; only the second varies between
+    the gate, the logprob validation and a `presence_penalty` ablation, and all three can share
+    one server start.
 
 ## 5. Open questions
 

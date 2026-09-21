@@ -16,7 +16,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .canonical import canonical_json, short_hash
 
@@ -188,6 +188,34 @@ class ExperimentConfig(_Model):
     concurrency: int = 1
     #: logprob mode only; ignored by sampled runs and absent from their run ids
     probe_points: list[ProbePoint] = Field(default_factory=lambda: [ProbePoint(id="start")])
+    #: Sampling parameters that replace the model config's for this experiment only. Keys are
+    #: the model config's ``request.sampling`` keys, plus ``extra_body``, which is merged one
+    #: level deep (so overriding ``top_k`` keeps ``chat_template_kwargs``). The merged params are
+    #: what the run id hashes, so an override means new runs and an empty one changes nothing.
+    #: Sampled runs only: logprob mode always sends neutral sampling.
+    sampling_override: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _check_sampling_override(self) -> ExperimentConfig:
+        if "seed" in self.sampling_override:
+            raise ValueError("sampling_override: the seed is base_seed + sample_index, not a param")
+        extra_body = self.sampling_override.get("extra_body", {})
+        if not isinstance(extra_body, dict):
+            raise ValueError("sampling_override: extra_body must be a mapping")
+        if self.sampling_override and self.arm == "baseline":
+            # the analysis groups by arm, and "baseline" means the model config as written
+            raise ValueError("sampling_override needs an arm name other than 'baseline'")
+        return self
+
+    def request_params(self, model: ModelConfig) -> dict[str, Any]:
+        """The model's request params with this experiment's override applied."""
+        params = model.request_params()
+        for key, value in self.sampling_override.items():
+            if key == "extra_body":
+                params["extra_body"] = {**params.get("extra_body", {}), **value}
+            else:
+                params[key] = value
+        return params
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:

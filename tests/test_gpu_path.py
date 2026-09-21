@@ -18,6 +18,7 @@ import yaml
 
 from safety_checking import cli
 from safety_checking.config import (
+    ExperimentConfig,
     ModelConfig,
     is_local_url,
     load_any,
@@ -25,6 +26,7 @@ from safety_checking.config import (
     load_model_config,
 )
 from safety_checking.history import build_prefix
+from safety_checking.logprob import NEUTRAL_SAMPLING
 from safety_checking.render import expected_items, render_prefix, verify_rendering
 from safety_checking.runner import (
     AdapterResponse,
@@ -54,6 +56,7 @@ REPO = Path(__file__).resolve().parents[1]
 MODEL_YAML = REPO / "configs" / "models" / "qwen3.8-27b-nothink.yaml"
 SMOKE_YAML = REPO / "configs" / "smoke.yaml"
 GATE_YAML = REPO / "configs" / "gate.yaml"
+GATE_NEUTRAL_YAML = REPO / "configs" / "gate_neutral.yaml"
 SLURM = REPO / "scripts" / "serve_and_run.slurm"
 
 
@@ -180,6 +183,66 @@ def test_smoke_and_gate_configs_describe_the_runs_in_the_brief() -> None:
     assert (gate.lengths, gate.n_samples) == ([5], 50)
     assert len(gate.scenarios) * gate.n_samples == 100
     assert smoke_model.adapter_name == gate_model.adapter_name  # same model, same run ids
+
+
+def experiment_with(**fields: Any) -> ExperimentConfig:
+    base = {"experiment": "x", "model": "m.yaml", "scenarios": ["s"], "lengths": [5]}
+    return ExperimentConfig.model_validate({**base, "n_samples": 1, **fields})
+
+
+def test_no_sampling_override_leaves_params_and_run_ids_alone() -> None:
+    for path in (SMOKE_YAML, GATE_YAML):
+        experiment, model = load_experiment_config(path)
+        assert experiment.sampling_override == {}
+        assert experiment.request_params(model) == model.request_params()
+
+
+def test_sampling_override_replaces_keys_and_merges_extra_body() -> None:
+    model = load_model_config(MODEL_YAML)
+    before = model.request_params()
+    experiment = experiment_with(
+        arm="hot", sampling_override={"temperature": 1.0, "extra_body": {"top_k": -1}}
+    )
+    params = experiment.request_params(model)
+    assert params["temperature"] == 1.0
+    assert params["top_p"] == before["top_p"]
+    assert params["extra_body"]["top_k"] == -1
+    # one level deep: the chat template kwargs are part of the stimulus and must survive
+    assert params["extra_body"]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert model.request_params() == before  # the model config is not touched
+
+    same_model = model.adapter_name
+    assert compute_run_id("p", same_model, "hot", params, 0) != compute_run_id(
+        "p", same_model, "hot", before, 0
+    )
+
+
+def test_sampling_override_is_refused_when_it_would_mislabel_runs() -> None:
+    with pytest.raises(ValueError, match="arm name"):
+        experiment_with(sampling_override={"temperature": 1.0})
+    with pytest.raises(ValueError, match="seed"):
+        experiment_with(arm="hot", sampling_override={"seed": 1})
+    with pytest.raises(ValueError, match="extra_body"):
+        experiment_with(arm="hot", sampling_override={"extra_body": 3})
+
+
+def test_gate_neutral_samples_the_distribution_logprob_mode_reads() -> None:
+    experiment, model = load_experiment_config(GATE_NEUTRAL_YAML)
+    params = experiment.request_params(model)
+    sent = {**params, **params["extra_body"]}
+    for key, value in NEUTRAL_SAMPLING.items():
+        assert sent[key] == value
+    assert sent["presence_penalty"] == 0.0
+    assert sent["repetition_penalty"] == 1.0
+    assert sent["chat_template_kwargs"] == {"enable_thinking": False}
+
+    # same cells and same served model as the gate, but never the same run ids
+    gate, gate_model = load_experiment_config(GATE_YAML)
+    assert (experiment.scenarios, experiment.lengths) == (gate.scenarios, gate.lengths)
+    assert model.adapter_name == gate_model.adapter_name
+    assert experiment.arm != gate.arm
+    smoke, _ = load_experiment_config(SMOKE_YAML)
+    assert experiment.probe_points == smoke.probe_points
 
 
 def test_load_any_accepts_both_kinds_of_yaml() -> None:
