@@ -435,6 +435,19 @@ timeout, failing fast if the process dies; renders; runs; prints outcome counts 
 shuts the server down from an `EXIT` trap, whether the run succeeded, failed or was cancelled.
 The allocation is never written in the script; it is passed with `sbatch -A`.
 
+**First working run (smoke, job 3458752, 2026-09-20, c301-003).** Server healthy after 306 s
+(weights 48 s, graph compile 27 s, engine init 165 s in all). Render check passed on the
+50-call prefix: 205 of 205 expected items in order, 50 tool calls and 50 tool results, 8,753
+prompt tokens. 30 runs in 55.9 s at concurrency 4: 0 errors, 0 parse failures, 0 truncations, no
+reasoning text, no parallel tool calls; prefix cache hit rate rose to 87.6%. Every run checked
+before acting: `checked_then_declined` 15/15 risky, `checked_then_acted` 15/15 benign, at all
+three lengths, so the smoke test says the pipeline works and nothing yet about the research
+question. Two facts about the chat template, neither a fault: in non-thinking mode it writes an
+empty `<think></think>` block into *every* past assistant turn (78 in the 50-call prompt), and
+it places the tool definitions *before* our system prompt, so the standing rules come after
+about 3k tokens of tool specs. One gap: `usage.cached_tokens` came back 0 because vLLM only
+reports it with `--enable-prompt-tokens-details`, which the model config does not yet pass.
+
 ### 3.10 Logprob mode (design only, not built)
 
 **What it measures.** At the decision point, the probability that the model's first tool call
