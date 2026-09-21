@@ -1,7 +1,7 @@
 # secrets
 .env
 
-# large outputs live on $WORK; ./outputs is a symlink to them
+# large outputs live on $WORK; ./outputs is a symlink to them (a plain folder on a local copy)
 /outputs
 
 # environments and build artifacts

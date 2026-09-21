@@ -5,7 +5,34 @@ safety check before a consequential action as the session grows, with the policy
 context the whole time. Read `SPEC.md` before changing anything structural; it carries the design
 decisions and their reasons.
 
+## Two copies
+
+The repo lives in two places. A **local copy** (a Mac) is where the infrastructure is built:
+code, configs, tests, analysis. The **LS6 copy** is where jobs are submitted. Manas moves code
+between them with git himself; never push or pull.
+
+On the local copy the login-node limits below (memory cap, `$WORK`, the `UV_CONCURRENT_*` and
+`RAYON_NUM_THREADS` prefixes) do not apply, and `./outputs` is a plain git-ignored folder rather
+than a symlink: it holds the tiktoken cache and whatever `sc build-prefixes` or a `fake:*` run
+writes, and never real run data unless Manas copies it down. Everything else applies on both:
+no paid calls, no network in tests, no torch/vllm/transformers imports, no job submission, and
+never an allocation in a script. Nothing here can start a GPU job, so the deliverable is a
+config or a script that Manas runs on LS6.
+
+`tests/test_history.py` pins every prefix hash. It must pass on both copies: runs refer to
+prefixes by hash, so a prefix built here has to be the prefix the job builds there.
+
+Local setup, once: `brew install uv`, `uv sync`, then fetch the token encoding (the one
+download; tests never do it):
+
+```bash
+mkdir -p outputs/tiktoken_cache
+TIKTOKEN_CACHE_DIR=outputs/tiktoken_cache uv run python -c "import tiktoken; tiktoken.get_encoding('o200k_base')"
+```
+
 ## Environment rules (hard constraints)
+
+Written for the LS6 copy; "Two copies" above says what differs locally.
 
 - This is a **TACC Lonestar6 login node**, a shared machine. Never run anything heavy here: no
   model inference, no long loops, no many-worker parallel jobs. Unit tests that finish in seconds

@@ -172,6 +172,63 @@ def test_rebuilding_is_deterministic(scenario, world) -> None:
             assert first.world_snapshot == second.world_snapshot
 
 
+# The experiment's stimuli, pinned. Code is written on one machine and jobs are submitted from
+# another, and runs refer to prefixes by hash alone, so both copies must build these exact
+# bytes. A failure here is either a platform difference (a bug) or a real change to the
+# experiment, which needs a note in SPEC.md and new values here.
+PINNED_TAIL_HASH = "ad127a41c2e3"
+PINNED_PREFIX_HASHES = {
+    "sharing_risky": {
+        "none": {
+            5: "ed6838f7e12cf264c97221f947d1a5b7daeef5b6799d02225703334cc9ed3dd9",
+            20: "205cd211007104c4ea0f2ae9f0b16043a33438dcf0fd74d3018cc0fd7099e8c9",
+            50: "75da62a1f10329cedab2ae2610b48818ef35ee3097efe3fa077aed37e20ca388",
+        },
+        "performed": {
+            5: "0bb549484a6da9ced42c1deb23c73587247587f562d1001f471a173c0ae5bee0",
+            20: "643bf86b896c3232d12badad497cf938ef166a0122255ab3e71d370b9da93b35",
+            50: "0a2dc89e3301f97f741286280d17972458a024026913c8a8cf0abf0c49105b4b",
+        },
+    },
+    "sharing_benign": {
+        "none": {
+            5: "cf51b23213434c457d4e433a90cb409408f3e021b3c4dcf12e718a306fe531c5",
+            20: "204c942022789c0522ccc524b60d5a0ac79782ce1c053036869dce64cc06883f",
+            50: "7e7fb96148e07fc85fcacec9d099427f38c947c77e2da9ffa8ba9352f068b0c5",
+        },
+        "performed": {
+            5: "0b387e750442364e005cb959b4ca7d391d85cbc25f9c50c764172e820a0458b4",
+            20: "f2535d7d4dc7aa1aa3cf01f86d855c2368a477c91bbf97c04926d443398904d3",
+            50: "9a028725e6c0e5de3732c0dd57fc906d496b3de1df25878006b14dd6424344ca",
+        },
+    },
+}
+
+
+def test_prefix_hashes_are_pinned() -> None:
+    built: dict[str, dict[str, dict[int, str]]] = {}
+    for scenario_id in PINNED_PREFIX_HASHES:
+        scenario = load_scenario(scenario_id)
+        world = load_scenario_world(scenario)
+        for pattern in PRIOR_CHECK_PATTERNS:
+            for length in LENGTHS:
+                prefix = build(scenario, world, length, pattern)
+                assert prefix.metadata.tail_hash.startswith(PINNED_TAIL_HASH)
+                built.setdefault(scenario_id, {}).setdefault(pattern, {})[length] = (
+                    prefix.prefix_hash
+                )
+    assert built == PINNED_PREFIX_HASHES
+
+
+def test_prefix_hash_does_not_depend_on_the_tokenizer(scenario, world, monkeypatch) -> None:
+    """A machine without the tiktoken cache estimates token counts; its prefixes are the same."""
+    exact = build(scenario, world, 20)
+    monkeypatch.setattr("safety_checking.tokens._encoding", lambda: None)
+    estimated = build(scenario, world, 20)
+    assert estimated.metadata.token_count_estimated
+    assert estimated.prefix_hash == exact.prefix_hash
+
+
 def test_hash_changes_when_the_scenario_changes(scenario, world) -> None:
     base = build(scenario, world, 5)
     edited = scenario.model_copy(update={"decision_request": "Something else entirely, Dani."})

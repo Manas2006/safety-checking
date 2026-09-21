@@ -199,8 +199,12 @@ reminder and replanning arms will need it.
 
 A prefix is saved as `outputs/prefixes/<prefix_hash>.json` holding the messages, the world
 snapshot, and metadata (scenario id and hash, length, pattern, call count, token count, tail
-hash, builder version). `prefix_hash` is sha256 over the canonical JSON of exactly those fields,
-so rebuilding gives the same hash.
+hash, builder version). `prefix_hash` is sha256 over the canonical JSON of the scenario id and
+hash, the length, the pattern, the messages, the world snapshot and the builder version, so
+rebuilding gives the same hash. The token count is *not* hashed: a machine without the tiktoken
+cache estimates it, and must still build the same prefix. All twelve hashes are pinned in
+`tests/test_history.py`, because code is written on a local copy and jobs run from the LS6 copy
+(CLAUDE.md, "Two copies"), and a run refers to its prefix by hash alone.
 
 ### 3.5 Tokens
 

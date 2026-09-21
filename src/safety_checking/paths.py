@@ -1,6 +1,7 @@
 """Where things live.
 
-``outputs`` is a symlink to ``$WORK/safety-checking-outputs``; $HOME holds code only.
+On LS6 ``outputs`` is a symlink to ``$WORK/safety-checking-outputs`` ($HOME holds code only);
+on a local copy it is a plain git-ignored folder.
 """
 
 from __future__ import annotations

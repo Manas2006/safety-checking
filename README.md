@@ -29,7 +29,8 @@ uv run sc show outputs/runs/smoke.jsonl --index 0
 uv run sc counts outputs/runs/smoke.jsonl   # outcome counts per cell, never rates
 ```
 
-`./outputs` is a symlink to `$WORK/safety-checking-outputs`.
+On LS6 `./outputs` is a symlink to `$WORK/safety-checking-outputs`; on a local copy it is a plain
+git-ignored folder. `CLAUDE.md` ("Two copies") covers local setup and what runs where.
 
 No API calls happen by accident: `sc run` refuses any model that is not `fake:*` unless you pass
 `--confirm-paid`, and `--dry-run` works for real model specs without a key. Runs are resumable;
