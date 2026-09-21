@@ -797,12 +797,24 @@ def test_slurm_script_polls_health_with_a_timeout_and_always_shuts_down() -> Non
     assert script.index("trap cleanup EXIT") < script.index("setsid")
 
 
+def test_slurm_script_checks_the_node_before_starting_the_server() -> None:
+    """Slurm does not track GPUs here, so a node with a missing GPU is handed out as healthy."""
+    script = SLURM.read_text()
+    assert "nvidia-smi -L" in script
+    assert "BAD NODE" in script and "--exclude=" in script
+    assert "exit 6" in script
+    assert "torch.cuda.device_count()" in script  # run with the serving venv, inside the job
+    assert script.index("BAD NODE") < script.index("setsid")
+
+
 def test_slurm_script_exports_config_env_and_finds_nvcc_without_module_load() -> None:
     script = SLURM.read_text()
     code = "\n".join(line for line in script.splitlines() if not line.lstrip().startswith("#"))
     assert "serve-args" in code and "--env" in code
     assert "VLLM_USE_FLASHINFER_SAMPLER" not in code  # it comes from the YAML, not from here
-    assert "CUDA_HOME" in code and "module load" not in code
+    assert "module load" not in code
+    # exposing nvcc is opt-in: by default the node's environment is left alone
+    assert 'SC_EXPOSE_NVCC:-0' in code
     # the real affinity mask, not nproc, which honours OMP_NUM_THREADS
     assert "Cpus_allowed_list" in code
     assert script.index("--env") < script.index("setsid")  # exported before the server starts

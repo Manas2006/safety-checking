@@ -76,10 +76,12 @@ while IFS= read -r kv; do
   [ -n "$kv" ] && export "$kv" && echo "== serve env: $kv"
 done < <("$SC" serve-args "$EXPERIMENT_CONFIG" --env)
 
-# Site detail, not a model choice: compute nodes have no nvcc on PATH, and anything in the stack
-# that JIT-compiles a CUDA kernel fails without one. Point at the newest CUDA 12 toolkit without
-# `module load`, which would also put its libraries ahead of the ones torch ships.
-if ! command -v nvcc >/dev/null 2>&1; then
+# Compute nodes have no nvcc on PATH. Nothing in the configured stack needs one (the FlashInfer
+# sampler, which did, is switched off in the model YAML), so by default the environment is left
+# exactly as the node provides it. SC_EXPOSE_NVCC=1 points CUDA_HOME and PATH at the newest CUDA
+# 12 toolkit for a stack that JIT-compiles; it does not `module load`, which would also put the
+# toolkit's libraries ahead of the ones torch ships.
+if [ "${SC_EXPOSE_NVCC:-0}" = "1" ] && ! command -v nvcc >/dev/null 2>&1; then
   CUDA_HOME="${CUDA_HOME:-$(ls -d /opt/apps/cuda/12.* 2>/dev/null | sort -V | tail -n 1)}"
   if [ -n "$CUDA_HOME" ] && [ -x "$CUDA_HOME/bin/nvcc" ]; then
     export CUDA_HOME PATH="$CUDA_HOME/bin:$PATH"
@@ -101,6 +103,34 @@ echo "== vLLM $INSTALLED_VLLM   GPUs: $CUDA_VISIBLE_DEVICES   HF_HUB_CACHE: $HF_
 nvidia-smi --query-gpu=index,name,memory.total,driver_version --format=csv
 nvidia-smi | sed -n '3,4p'   # the driver / CUDA version line, for the record
 echo "== ${SERVE_ARGS[*]}"
+
+# -- is this node healthy? ------------------------------------------------------------------
+# Slurm does not track GPUs on these partitions, so it will happily hand out a node with a GPU
+# missing or wedged (job 3458684: c301-002 showed 2 of 3 GPUs, and CUDA init failed with
+# "unknown error"). Find that out in seconds, and name the node, instead of after a server start.
+GPUS_PRESENT="$(nvidia-smi -L 2>/dev/null | grep -c '^GPU ' || true)"
+echo "== GPUs present on $(hostname -s): $GPUS_PRESENT (tensor parallel needs $TP)"
+if [ "$GPUS_PRESENT" -lt "$TP" ]; then
+  echo "== BAD NODE $(hostname -s): $GPUS_PRESENT GPUs present, $TP needed; resubmit with --exclude=$(hostname -s)" >&2
+  exit 6
+fi
+if ! "$VLLM_VENV/bin/python" - "$TP" <<'PY'
+import sys
+import torch
+
+need = int(sys.argv[1])
+found = torch.cuda.device_count()
+assert found >= need, f"CUDA sees {found} device(s), {need} needed"
+for index in range(need):
+    torch.zeros(1, device=f"cuda:{index}").add_(1)
+    torch.cuda.synchronize(index)
+print(f"== CUDA init ok on {need} device(s): torch {torch.__version__}, CUDA {torch.version.cuda}")
+PY
+then
+  echo "== BAD NODE $(hostname -s): CUDA would not initialise; resubmit with --exclude=$(hostname -s)" >&2
+  nvidia-smi >&2 || true
+  exit 6
+fi
 
 # -- server lifecycle ----------------------------------------------------------------------
 SERVER_PID=""

@@ -337,10 +337,18 @@ changes. The model config gained `serve.env`, exported by the job script before 
 starts, and sets `VLLM_USE_FLASHINFER_SAMPLER=0`, selecting vLLM's native PyTorch sampler: the
 same top-k/top-p distribution from a different implementation, so the draw for a given seed
 differs. It lives in the model config, and so in every run id, because it is a sampling
-implementation choice. Separately, as a site detail outside the hash, the job script points
-`CUDA_HOME` and `PATH` at `/opt/apps/cuda/12.*` when no `nvcc` is found, so that anything else
-that JIT-compiles can. It does not `module load cuda`, which would also put the toolkit's
-libraries ahead of the ones torch ships.
+implementation choice. With that sampler off, nothing in the configured stack needs `nvcc`, so
+the job script leaves the node's environment alone by default. `SC_EXPOSE_NVCC=1` points
+`CUDA_HOME` and `PATH` at `/opt/apps/cuda/12.*` for a stack that does JIT-compile; it never
+runs `module load cuda`, which would put the toolkit's libraries ahead of the ones torch ships.
+
+**Slurm hands out broken GPU nodes.** GPUs are not a tracked resource on these partitions
+(`Gres=(null)`), so a node with a GPU missing is scheduled as healthy. The second smoke job
+(3458684) landed on c301-002, where `nvidia-smi` listed 2 of the 3 A100s, and both workers
+died in `torch._C._cuda_init()` with "CUDA unknown error". The job script now checks the node
+before starting the server: it counts the GPUs present, then initialises CUDA and runs one
+operation on each device it will use, with the serving venv's Python. A failure exits with
+status 6 within seconds and prints the node name with the `--exclude=` to resubmit with.
 
 **CPU affinity.** Jobs get the whole node (`AllocCPUS=128`) but run with `-n 1`. `nproc` reports
 1 there, which proves nothing: GNU `nproc` honours `OMP_NUM_THREADS`, and TACC sets it to 1. The
