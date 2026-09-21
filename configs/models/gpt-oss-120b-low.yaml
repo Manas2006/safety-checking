@@ -1,0 +1,78 @@
+# openai/gpt-oss-120b, MXFP4, reasoning effort low, served by vLLM on the TWO H100 80 GB of a
+# gpu-h100 node. Submit with `-p gpu-h100`.
+#
+# Checked against the model card, config.json, the vLLM recipe, OpenAI's gpt-oss README and the
+# Hub API on 2026-09-20:
+#   https://huggingface.co/openai/gpt-oss-120b
+#   https://docs.vllm.ai/projects/recipes/en/stable/OpenAI/GPT-OSS.html
+#   - 116.8B parameters, 5.1B active (128 experts, 4 per token), 36 layers, Apache-2.0, not gated
+#   - the experts are MXFP4 as released; there is no BF16 checkpoint. vLLM runs MXFP4 on Ampere
+#     through Marlin with the TRITON_ATTN backend, and on Hopper through Triton kernels
+#   - the repo also holds original/ and metal/ copies of the weights: `download.exclude`
+#     skips them, and the download is about 65 GB, not 195.8
+#   - 64 attention heads, 8 KV heads, alternating sliding-window (128) and full attention,
+#     native context 131072
+#   - recipe: --tool-call-parser openai --enable-auto-tool-choice. The reasoning parser is
+#     named `openai_gptoss` in vLLM 0.29.0 (vllm/reasoning/__init__.py)
+#   - OpenAI's README: sample with temperature 1.0 and top_p 1.0
+#
+# What is different about this family, and has to be said wherever its numbers appear:
+#   1. It ALWAYS reasons. Effort is low, medium or high and cannot be switched off, so there is
+#      no "nothink" condition. `reasoning_effort: low` is the closest thing to the thinking-off
+#      configs of the other families, and the id says so. max_tokens is 2048, not 1024, so that
+#      the reasoning cannot crowd out the tool call; max_model_len is sized for it.
+#   2. Logprob mode (SPEC.md 3.10) does not apply: the next token after the prompt is reasoning,
+#      not a tool call. There is deliberately no `logprob` section.
+#   3. The model was trained on the harmony format. vLLM's Responses API renders requests with
+#      openai_harmony; we use chat completions, like every other model. Whether `sc render`
+#      (which asks /tokenize) shows exactly what a chat-completions request is turned into has
+#      NOT been verified for this family: read the first rendered prompt with that in mind.
+#   4. openai_harmony fetches its vocabulary at start-up and the job serves offline. Run
+#      scripts/setup_harmony_encodings.sh once (it copies the o200k_base file we already
+#      have); the job script points TIKTOKEN_ENCODINGS_BASE at it.
+#
+# Everything in this file is hashed into the adapter name, and so into every run id.
+
+id: gpt-oss-120b-low
+hf_repo: openai/gpt-oss-120b
+revision: b5c939de8f754692c1647ca79fbf85e8c1e70f8a
+served_model_name: gpt-oss-120b
+
+serve:
+  vllm_version: "0.29.0"
+  # About 65 GB of weights. One H100 holds them (the card's claim) with about 7 GB to spare;
+  # two leave room for 16 sequences. 64 attention heads and 8 KV heads divide by 2. Two A100s
+  # (80 GB in all) would leave under 4 GB per GPU.
+  tensor_parallel_size: 2
+  max_model_len: 32768
+  # "auto" takes the checkpoint as released: MXFP4 experts, BF16 elsewhere
+  dtype: auto
+  gpu_memory_utilization: 0.90
+  max_num_seqs: 16
+  seed: 0
+  tool_call_parser: openai
+  reasoning_parser: openai_gptoss
+  enable_prefix_caching: true
+  host: 127.0.0.1
+  port: 8000
+  startup_timeout_s: 1200
+  env:
+    # LS6 compute nodes have no nvcc. See qwen3.8-27b-nothink.yaml. With top_p 1.0 and no
+    # top_k the sampler has nothing to do, but the FlashInfer one still compiles at warm-up.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+
+request:
+  sampling:
+    temperature: 1.0
+    top_p: 1.0
+    reasoning_effort: low
+    max_tokens: 2048
+  base_seed: 0
+
+download:
+  exclude:
+    - original/*
+    - metal/*
+
+notes: >-
+  Medium gpt-oss. Not yet served, and nothing of ours has run on an H100 node yet: expect the first job there to be an infrastructure test.

@@ -1,0 +1,68 @@
+# Qwen/Qwen3.5-9B, BF16, non-thinking mode, served by vLLM on ONE A100 40 GB (gpu-a100*).
+# The small Qwen. It is one generation older than qwen3.8-27b-nothink, because Qwen3.8 has no
+# small open model; Qwen/Qwen3.5-27B is the same-generation partner if the scale contrast needs it.
+#
+# Checked against the model card, config.json and the Hub API on 2026-09-20:
+#   https://huggingface.co/Qwen/Qwen3.5-9B
+#   - 9.65B parameters, BF16, 19.3 GB in 4 shards, Apache-2.0, not gated
+#   - architecture Qwen3_5ForConditionalGeneration: the same vision-language family and hybrid
+#     attention as the 27B (linear attention on 24 of 32 layers), 16 attention heads, 4 KV heads
+#   - card: vLLM with --reasoning-parser qwen3 --enable-auto-tool-choice
+#     --tool-call-parser qwen3_coder. The 27B's card names qwen3_xml instead; both read the same
+#     <tool_call><function=...> wire format, and each config follows its own card
+#   - thinking is ON by default; off per request with chat_template_kwargs.enable_thinking=false
+#   - card's non-thinking sampling, identical to the 27B's: temperature 0.7, top_p 0.8, top_k 20,
+#     min_p 0, presence_penalty 1.5, repetition_penalty 1.0
+#
+# Everything in this file is hashed into the adapter name, and so into every run id.
+
+id: qwen3.5-9b-nothink
+hf_repo: Qwen/Qwen3.5-9B
+revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
+served_model_name: qwen3.5-9b
+
+serve:
+  vllm_version: "0.29.0"
+  tensor_parallel_size: 1
+  # Native limit 262144. The longest prompt is about 9k o200k tokens and a run is estimated at
+  # 13.4k; 32768 leaves room for a tokenizer that splits our JSON less well. `sc render` makes
+  # the exact check on the node and stops the job if a run cannot fit.
+  max_model_len: 32768
+  dtype: bfloat16
+  gpu_memory_utilization: 0.90
+  max_num_seqs: 16
+  seed: 0
+  tool_call_parser: qwen3_coder
+  reasoning_parser: qwen3
+  enable_prefix_caching: true
+  host: 127.0.0.1
+  port: 8000
+  startup_timeout_s: 1200
+  extra_args:
+    # text only: do not reserve memory for image or video inputs
+    - --limit-mm-per-prompt
+    - '{"image": 0, "video": 0}'
+  env:
+    # LS6 compute nodes have no nvcc, and FlashInfer's sampler JIT-compiles at warm-up
+    # (job 3458103). See qwen3.8-27b-nothink.yaml.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+
+request:
+  sampling:
+    temperature: 0.7
+    top_p: 0.8
+    presence_penalty: 1.5
+    max_tokens: 1024
+  extra_body:
+    top_k: 20
+    min_p: 0.0
+    repetition_penalty: 1.0
+    chat_template_kwargs:
+      enable_thinking: false
+  base_seed: 0
+
+# No `logprob` section yet. The chat template opens a call with "<tool_call>\n<function=" like
+# the 27B; it goes in once this model's own rendered prompt (outputs/renders/) confirms it.
+
+notes: >-
+  Small Qwen, one A100. Not yet served: the first smoke run is also the first test of this file.

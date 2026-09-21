@@ -1,0 +1,86 @@
+# mistralai/Ministral-3-14B-Instruct-2512-BF16, served by vLLM on TWO A100 40 GB (gpu-a100*).
+# An instruct model with no thinking mode (the Reasoning variant is a separate checkpoint), so
+# there is no "nothink" in the id and no reasoning parser.
+#
+# Checked against the model cards, config.json, the chat template and the Hub API on 2026-09-20:
+#   https://huggingface.co/mistralai/Ministral-3-14B-Instruct-2512-BF16
+#   https://huggingface.co/mistralai/Ministral-3-14B-Instruct-2512   (usage section)
+#   - 13.95B parameters (13.5B language model + 0.4B vision encoder), Apache-2.0, not gated
+#   - the default repo is FP8, which an A100 has no kernels for: this is Mistral's BF16 repo
+#   - the repo holds the weights twice, 27.9 GB each: consolidated.safetensors (Mistral's
+#     format) and 6 sharded files (Hugging Face format). We serve the Hugging Face format,
+#     so `download.exclude` skips the other and the download is 27.9 GB, not 55.8
+#   - architecture Mistral3ForConditionalGeneration, 40 layers, 32 attention heads, 8 KV
+#     heads, full attention throughout, vocabulary 131072 (tekken)
+#   - card: vllm >= 0.12.0, --enable-auto-tool-choice --tool-call-parser mistral
+#
+# Two departures from the card, both deliberate:
+#   1. The card serves Mistral's own format (--tokenizer_mode mistral --config_format mistral
+#      --load_format mistral). In that mode vLLM validates tool-call ids as exactly 9
+#      alphanumeric characters (vllm/parser/mistral.py, is_valid_id), and ours are call_r001:
+#      nine characters with an underscore. The ids are part of every pinned prefix hash, so
+#      they stay and the model is served in Hugging Face format, whose chat template renders
+#      "[TOOL_CALLS]name[ARGS]{json}" and "[TOOL_RESULTS]...[/TOOL_RESULTS]" and never prints
+#      an id. vLLM's mistral tool parser supports this: for a Hugging Face tokenizer it looks
+#      for [ARGS] in the vocabulary. The three flags are spelled out so that "auto" cannot
+#      pick the Mistral format on its own.
+#   2. The card recommends a temperature below 0.1 "for production". At that temperature the
+#      50 samples of a cell are close to one sample, and a check rate has no meaning. 0.7 is
+#      the non-thinking temperature of the Qwen configs. OPEN QUESTION in SPEC.md 5: keep 0.7,
+#      or run these two models under the card's 0.1 as a `sampling_override` arm as well.
+#
+# Everything in this file is hashed into the adapter name, and so into every run id.
+
+id: ministral-3-14b
+hf_repo: mistralai/Ministral-3-14B-Instruct-2512-BF16
+revision: 3cea74c1ebaf5ce5f5a2553de470e2ceab825142
+served_model_name: ministral-3-14b
+
+serve:
+  vllm_version: "0.29.0"
+  # 27.9 GB fits one 40 GB card but leaves about 5 GB for the KV cache at 164 KB a token;
+  # 32 attention heads and 8 KV heads divide by 2, and the node is allocated whole anyway
+  tensor_parallel_size: 2
+  # see qwen3.5-9b-nothink.yaml; tekken will not count our prompts as o200k does
+  max_model_len: 32768
+  dtype: bfloat16
+  gpu_memory_utilization: 0.90
+  max_num_seqs: 16
+  seed: 0
+  tool_call_parser: mistral
+  enable_prefix_caching: true
+  host: 127.0.0.1
+  port: 8000
+  startup_timeout_s: 1200
+  extra_args:
+    # Hugging Face format, explicitly (departure 1 above)
+    - --tokenizer-mode
+    - hf
+    - --config-format
+    - hf
+    - --load-format
+    - safetensors
+    # text only: do not reserve memory for image inputs
+    - --limit-mm-per-prompt
+    - '{"image": 0}'
+  env:
+    # LS6 compute nodes have no nvcc. See qwen3.8-27b-nothink.yaml.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+
+request:
+  sampling:
+    # departure 2 above
+    temperature: 0.7
+    max_tokens: 1024
+  base_seed: 0
+
+download:
+  exclude:
+    - consolidated.safetensors
+
+# No `logprob` section yet. The template opens a call with "[TOOL_CALLS]" and ends the name
+# with "[ARGS]"; it goes in once this model's own rendered prompt confirms it.
+
+notes: >-
+  Medium Mistral. Not yet served: the first smoke run is also the first test of this file,
+  and of serving a Ministral in Hugging Face format.

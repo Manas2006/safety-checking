@@ -1,0 +1,63 @@
+# google/gemma-4-31B-it, BF16, thinking off, served by vLLM on the TWO H100 80 GB of a gpu-h100
+# node. Submit with `-p gpu-h100`.
+#
+# Why not the A100 node: 62.5 GB of weights is 31.3 GB per GPU at tensor parallel 2, and 0.90 of
+# a 40 GB A100 is 36 GB, which leaves under 5 GB per GPU for activations and the KV cache. The
+# recipe's "2x A100" line means 80 GB cards.
+#
+# Checked against the model card, config.json, the vLLM recipe and the Hub API on 2026-09-20:
+#   https://huggingface.co/google/gemma-4-31B-it
+#   https://docs.vllm.ai/projects/recipes/en/stable/Google/Gemma4.html
+#   - 31.27B parameters (card: 30.7B without the vision encoder), dense, BF16, 62.5 GB in 2
+#     shards, Apache-2.0, not gated
+#   - architecture Gemma4ForConditionalGeneration (text, image, video), 60 layers of which 50
+#     are sliding-window (1024) and 10 full attention, 32 attention heads, 16 KV heads (4 on the
+#     full-attention layers): tensor parallel 2 divides all three
+#   - parsers, chat template, thinking switch, sampling and the open parser bugs: exactly as
+#     gemma-4-12b-nothink.yaml. The two sizes ship a byte-identical chat template.
+#
+# Everything in this file is hashed into the adapter name, and so into every run id.
+
+id: gemma-4-31b-nothink
+hf_repo: google/gemma-4-31B-it
+revision: 842da3794eaa0b77d5f08bae87a17459d91ff475
+served_model_name: gemma-4-31b
+
+serve:
+  vllm_version: "0.29.0"
+  tensor_parallel_size: 2
+  max_model_len: 32768
+  dtype: bfloat16
+  gpu_memory_utilization: 0.90
+  max_num_seqs: 16
+  seed: 0
+  tool_call_parser: gemma4
+  reasoning_parser: gemma4
+  enable_prefix_caching: true
+  host: 127.0.0.1
+  port: 8000
+  startup_timeout_s: 1200
+  extra_args:
+    # text only: skip multimodal profiling (this size has no audio input)
+    - --limit-mm-per-prompt
+    - '{"image": 0, "video": 0}'
+  env:
+    # Kept on H100 too: the missing nvcc is a property of LS6 compute nodes, not of the A100s.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+
+request:
+  sampling:
+    temperature: 1.0
+    top_p: 0.95
+    max_tokens: 1024
+  extra_body:
+    top_k: 64
+    chat_template_kwargs:
+      enable_thinking: false
+  base_seed: 0
+
+# No `logprob` section yet: the call opener is read off this model's own rendered prompt first.
+
+notes: >-
+  Medium Gemma, gpu-h100 (2x H100 80 GB). Not yet served, and nothing of ours has run on an
+  H100 node yet: expect the first job there to be an infrastructure test.

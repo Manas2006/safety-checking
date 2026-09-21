@@ -1,0 +1,70 @@
+# google/gemma-4-12B-it, BF16, thinking off, served by vLLM on ONE A100 40 GB (gpu-a100*).
+#
+# Checked against the model card, config.json, the vLLM recipe and the Hub API on 2026-09-20:
+#   https://huggingface.co/google/gemma-4-12B-it
+#   https://docs.vllm.ai/projects/recipes/en/stable/Google/Gemma4.html
+#   - 11.96B parameters, BF16, 23.9 GB in one file, Apache-2.0, not gated
+#   - architecture Gemma4UnifiedForConditionalGeneration (text, image, audio, video; no
+#     separate encoders), 48 layers of which 40 are sliding-window (1024) and 8 full
+#     attention, 16 attention heads, 8 KV heads (1 on the full-attention layers)
+#   - recipe: --tool-call-parser gemma4 --reasoning-parser gemma4 --enable-auto-tool-choice,
+#     one GPU of 40 GB or more
+#   - the recipe also passes vLLM's examples/tool_chat_template_gemma4.jinja. NOT used here:
+#     the pinned revision ships Google's own "canonical" template (published 2026-07-09,
+#     "fixed tool-calling loops, turn closures, and thinking content-ordering"), which is the
+#     later of the two and differs from vLLM's v0.29.0 example in 15 lines. The model's own
+#     template is pinned by `revision`; an external file would not be.
+#   - thinking is off unless chat_template_kwargs.enable_thinking=true; sent explicitly. With
+#     thinking off this size still writes an empty thought block, which the reasoning parser
+#     strips
+#   - card's sampling: temperature 1.0, top_p 0.95, top_k 64
+#   - the tool-call format is Gemma's own (<|tool_call>call:name{...}<tool_call|> with
+#     <|"|> string delimiters), not JSON. vLLM has two open bugs on this parser: pad tokens
+#     under concurrent requests (#39392) and raw tokens leaking when streaming (#44522; we do
+#     not stream). Read the parse-failure count of the smoke run before anything else.
+#
+# Everything in this file is hashed into the adapter name, and so into every run id.
+
+id: gemma-4-12b-nothink
+hf_repo: google/gemma-4-12B-it
+revision: 707f0a3b8a3c7ad586ed01e27eafbad8a27dd0f7
+served_model_name: gemma-4-12b
+
+serve:
+  vllm_version: "0.29.0"
+  tensor_parallel_size: 1
+  # see qwen3.5-9b-nothink.yaml; Gemma's 262k vocabulary will not count our prompts as o200k does
+  max_model_len: 32768
+  dtype: bfloat16
+  gpu_memory_utilization: 0.90
+  max_num_seqs: 16
+  seed: 0
+  tool_call_parser: gemma4
+  reasoning_parser: gemma4
+  enable_prefix_caching: true
+  host: 127.0.0.1
+  port: 8000
+  startup_timeout_s: 1200
+  extra_args:
+    # text only: skip multimodal profiling (recipe, "text-only workloads")
+    - --limit-mm-per-prompt
+    - '{"image": 0, "audio": 0, "video": 0}'
+  env:
+    # LS6 compute nodes have no nvcc. See qwen3.8-27b-nothink.yaml.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+
+request:
+  sampling:
+    temperature: 1.0
+    top_p: 0.95
+    max_tokens: 1024
+  extra_body:
+    top_k: 64
+    chat_template_kwargs:
+      enable_thinking: false
+  base_seed: 0
+
+# No `logprob` section yet: the call opener is read off this model's own rendered prompt first.
+
+notes: >-
+  Small Gemma, one A100. Not yet served: the first smoke run is also the first test of this file.

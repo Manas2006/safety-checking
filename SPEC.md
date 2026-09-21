@@ -4,8 +4,9 @@ Status: v0.4. Sections 1 to 3.8 were written before the code; Phase B (the deter
 implements all of it, and the spec was updated where building it changed the design (decision
 13, the same-turn flag in 3.6). v0.3 adds the GPU path (3.9): open-weights models served by vLLM
 on LS6 GPU nodes are the first real runs, not a paid API. v0.4 builds logprob mode (3.10), not
-yet run on a real model. Not implemented: the Anthropic adapter (a stub), any analysis code,
-and the second risk family.
+yet run on a real model. v0.5 configures the model set (3.9): eight models, none but the first
+served yet. Not implemented: the Anthropic adapter (a stub), any analysis code, and the second
+risk family.
 
 ## 1. Research question
 
@@ -417,6 +418,62 @@ The card's non-thinking sampling is temperature 0.7, top_p 0.8, top_k 20, min_p 
 Ampere has no FP8 kernels. `max_model_len` is 16384, not the native 262144: the longest prompt
 is about 9k tokens, and two 40 GB cards have roughly 7 GB each left after 27.8 GB of weights.
 
+**The model set: four families, a small and a medium model of each.** Eight configs under
+`configs/models/`, chosen so that the paper can ask two things of the length effect: does it
+appear across labs, and does it shrink with scale inside a lab. "Small" fits one 40 GB A100;
+"medium" is the largest of the family that one LS6 node serves without quantising it ourselves.
+All are Apache-2.0 and not gated. Every revision, head count and size below was read from the
+Hub API and `config.json` on 2026-09-20, not from a blog.
+
+| config id | repo | size | node | tool parser | thinking |
+|---|---|---|---|---|---|
+| `qwen3.5-9b-nothink` | `Qwen/Qwen3.5-9B` | 9.65B dense, 19.3 GB | 1x A100 | `qwen3_coder` | off per request |
+| `qwen3.8-27b-nothink` | `Qwen/Qwen3.8-27B` | 27.8B dense, 55.6 GB | 2x A100 | `qwen3_xml` | off per request |
+| `gemma-4-12b-nothink` | `google/gemma-4-12B-it` | 12.0B dense, 23.9 GB | 1x A100 | `gemma4` | off per request |
+| `gemma-4-31b-nothink` | `google/gemma-4-31B-it` | 31.3B dense, 62.5 GB | 2x H100 | `gemma4` | off per request |
+| `ministral-3-8b` | `mistralai/Ministral-3-8B-Instruct-2512-BF16` | 8.9B dense, 17.8 GB | 1x A100 | `mistral` | none |
+| `ministral-3-14b` | `mistralai/Ministral-3-14B-Instruct-2512-BF16` | 13.9B dense, 27.9 GB | 2x A100 | `mistral` | none |
+| `gpt-oss-20b-low` | `openai/gpt-oss-20b` | 20.9B, 3.6B active, 13.8 GB MXFP4 | 1x A100 | `openai` | always on, effort low |
+| `gpt-oss-120b-low` | `openai/gpt-oss-120b` | 116.8B, 5.1B active, 65 GB MXFP4 | 2x H100 | `openai` | always on, effort low |
+
+Each YAML's header carries what was checked and where. What the set does not make uniform, and
+the paper has to say:
+
+- **Thinking.** The headline condition is thinking off. Qwen and Gemma switch it off per
+  request; Ministral Instruct has none; gpt-oss cannot stop, so it runs at its lowest effort
+  with `max_tokens` 2048 instead of 1024, and logprob mode (3.10) does not apply to it. A
+  thinking-on twin of a Qwen or Gemma config needs no download and is the natural next arm.
+- **Sampling is each developer's recommendation**, with one exception: Mistral's card says
+  temperature below 0.1, at which the samples of a cell are nearly one sample, so the
+  Ministral configs use 0.7 (open question 16).
+- **Generation.** Qwen3.8 has no small open model, so the small Qwen is a Qwen3.5.
+  `Qwen/Qwen3.5-27B` is the same-generation partner if the within-family contrast needs one.
+- **Ministral is served in Hugging Face format, not Mistral's.** In Mistral's format vLLM
+  requires tool-call ids of exactly nine alphanumeric characters; ours are `call_r001`, and
+  they are part of every pinned prefix hash (decision 11). The Hugging Face chat template
+  prints no ids at all.
+- **Gemma uses the chat template in its own repo**, not the `tool_chat_template_gemma4.jinja`
+  the vLLM recipe passes: Google's later "canonical" template is what the pinned revision
+  ships, and a template inside the revision is pinned where an external file is not. vLLM has
+  open bugs on the `gemma4` parser (#39392, #44522), so Gemma's parse-failure count is the
+  first thing to read.
+- **`max_model_len` is 32768 for the seven new configs** (16384 for the first, unchanged so its
+  run ids stand). It is not a behavioural parameter; other tokenizers count our prompts
+  differently from `o200k_base`, and `sc render` makes the exact check on the node.
+- **H100.** Nothing of ours has run on `gpu-h100` yet. The two configs sized for it say so, and
+  the partition is chosen on the `sbatch` line (`-p gpu-h100`), never by the script.
+
+**One experiment config, any model.** `--model-config <model.yaml>` on `sc run`, `sc render`,
+`sc logprob` and `sc serve-args` replaces the model an experiment YAML names, and
+`serve_and_run.slurm` takes it as a third argument. The model is in the run id and the
+experiment is not, so `smoke.yaml` and `gate.yaml` serve the whole set, their logs hold every
+model's runs, and `sc counts` already keys on the model. Order of work per model: download,
+smoke (read the render and the parse failures), then the gate. A model that barely checks at
+length 5 cannot show a decline and one that always checks at 50 needs longer histories (open
+question 3): the gate decides which of the eight carry the headline. Reserves if a family
+drops out: `ibm-granite/granite-4.2-8b` and `-30b` (dense, Apache-2.0, `qwen3_coder` parser),
+`nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16` (hybrid Mamba, six attention layers).
+
 **Requests.** Standard parameters go as keywords; non-standard ones (`top_k`, `min_p`,
 `chat_template_kwargs`) travel under `params["extra_body"]`, which the OpenAI SDK merges into
 the request JSON. The per-request seed is `base_seed + sample_index`: samples of a cell differ,
@@ -663,6 +720,13 @@ Recorded with reasons, in the order they were settled.
     served model is one thing and how it is sampled is another; only the second varies between
     the gate, the logprob validation and a `presence_penalty` ablation, and all three can share
     one server start.
+22. **One experiment config serves every model; the model is an argument.** Copying
+    `smoke.yaml` and `gate.yaml` per model would be sixteen files that must stay identical, and
+    a difference between two of them would be a confound nobody chose. The experiment YAML's
+    own `model:` stays as the default, so nothing already run changes.
+23. **What is downloaded is not hashed.** `download.exclude` decides which of a repo's
+    duplicate weight files reach the disk; what is served is fixed by the revision and the
+    serve arguments, which are hashed.
 
 ## 5. Open questions
 
@@ -703,10 +767,20 @@ Not guesses to be made silently; these are for you to settle before or during th
 12. **Provider-side caching.** Replaying long identical prefixes is cheap with prompt caching, but
    caching may also change sampling behaviour in subtle ways. Do we enable it for the headline
    run?
-13. **Model set.** Which models, and do local open-weight models on compute nodes count as
-    headline or as a robustness check?
+13. **Model set.** Settled as far as configuring goes: the eight models of 3.9. Still open: which
+    of them the gate lets into the headline, and whether a paid frontier arm is added after.
 14. **Tokenizer mismatch.** `o200k_base` matches token counts across conditions but is wrong for
     non-OpenAI models by a few percent. Is matching on it good enough, or should each model's own
     tokenizer be used for matching?
 15. **Second risk family.** The protected-file family is designed for but not written. What is
     its required check and its consequential action, exactly?
+16. **Ministral's temperature.** The card recommends below 0.1; the configs use 0.7 so that a
+    cell's samples differ. Keep 0.7 as the headline, or also run the card's 0.1 as a
+    `sampling_override` arm? Related to question 7: the set now spans 0.7 (Qwen, Ministral) and
+    1.0 (Gemma, gpt-oss), each the developer's own number, so temperature is confounded with
+    family unless one arm fixes it across models.
+17. **gpt-oss reasoning effort.** `low` is the nearest thing to thinking off. Is that the fair
+    comparison, or is `medium` (the model's default) the one a deployed agent would run?
+18. **What gpt-oss is shown.** vLLM renders Responses-API requests with openai_harmony. Whether
+    chat completions, which we use, go through the same rendering as `/tokenize` (which
+    `sc render` asks) is not verified for this family.

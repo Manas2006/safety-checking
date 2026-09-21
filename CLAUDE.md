@@ -90,11 +90,20 @@ uv run sc serve-args configs/smoke.yaml                # the exact vllm serve co
 uv run sc run --config configs/smoke.yaml --dry-run    # cells and tokens, no server needed
 sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml            # sampled runs
 sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml logprob    # SPEC 3.10
+sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml run configs/models/<m>.yaml
 uv run sc logprob --config configs/smoke.yaml --table   # saved logprob records, calls nothing
 ```
 
+Eight models are configured (SPEC.md 3.9): a small and a medium model from each of Qwen, Gemma
+4, Ministral 3 and gpt-oss. An experiment YAML names one model; `--model-config <model.yaml>` on
+`sc run`, `render`, `logprob` and `serve-args`, or the job script's third argument, runs it
+against another, so experiment configs are never copied per model. A model YAML's header says
+which node it was sized for: `gemma-4-31b-nothink` and `gpt-oss-120b-low` need `-p gpu-h100`
+on the `sbatch` line, the rest run on `gpu-a100*`. gpt-oss also needs
+`scripts/setup_harmony_encodings.sh` once (a local copy, no download).
+
 Everything about a model lives in `configs/models/*.yaml` and is hashed into every run id, so
-editing that file means new runs. Job logs, the vLLM log, timing and the run summary land in
+editing that file means new runs (`notes`, `logprob` and `download` are the three exceptions). Job logs, the vLLM log, timing and the run summary land in
 `outputs/logs/`; rendered prompts in `outputs/renders/`.
 
 ## Conventions

@@ -48,6 +48,17 @@ scripts/download_weights.sh configs/models/qwen3.8-27b-nothink.yaml   # 55.6 GB 
 sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml
 ```
 
+Eight models are configured under `configs/models/`: a small and a medium model from each of
+Qwen, Gemma 4, Ministral 3 and gpt-oss (SPEC.md 3.9). An experiment config runs against any of
+them when the model YAML is given as the third argument; each YAML's header says what it was
+checked against and which node it was sized for.
+
+```bash
+scripts/download_weights.sh configs/models/gemma-4-12b-nothink.yaml
+sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml run configs/models/gemma-4-12b-nothink.yaml
+sbatch -A <allocation> -p gpu-h100 scripts/serve_and_run.slurm configs/smoke.yaml run configs/models/gpt-oss-120b-low.yaml
+```
+
 The job starts the server from the model YAML, waits for `/health`, renders one full prefix
 through the model's chat template and checks that no tool call or tool result was dropped
 (`outputs/renders/`), runs the experiment, prints outcome counts and timing, and always shuts
