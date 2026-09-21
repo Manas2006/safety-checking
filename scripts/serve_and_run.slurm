@@ -185,13 +185,18 @@ echo "== vLLM healthy after ${STARTUP_S}s"
 echo "startup_seconds=$STARTUP_S" > "$TIMING"
 
 # -- what the model actually sees ------------------------------------------------------------
-# Render the longest prefix through the served chat template and check that nothing was dropped.
-# A failure is loud but does not stop the run unless RENDER_STRICT=1: for a smoke test it is
-# more useful to see both the template problem and the behaviour it produces.
+# Render this experiment's longest prompt through the served chat template and check that
+# nothing was dropped. A failure is loud but does not stop the run unless RENDER_STRICT=1: for a
+# smoke test it is more useful to see both the template problem and the behaviour it produces.
+# Status 3 is different: the prompt does not fit max_model_len, every sample of that cell would
+# be refused with a 400, and there is nothing to learn from running it.
 RENDER_STATUS=0
-$SC render --config "$EXPERIMENT_CONFIG" --scenario sharing_risky --length 50 --base-url "$BASE_URL" \
-  || RENDER_STATUS=$?
+$SC render --config "$EXPERIMENT_CONFIG" --base-url "$BASE_URL" || RENDER_STATUS=$?
 echo "render_status=$RENDER_STATUS" >> "$TIMING"
+if [ "$RENDER_STATUS" -eq 3 ]; then
+  echo "== the longest prompt does not fit the model's context: not running the experiment" >&2
+  exit 5
+fi
 if [ "$RENDER_STATUS" -ne 0 ] && [ "${RENDER_STRICT:-0}" = "1" ]; then
   echo "== render check failed and RENDER_STRICT=1: not running the experiment" >&2
   exit 5

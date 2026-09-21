@@ -116,6 +116,18 @@ def test_counts_reports_outcomes_not_rates(capsys) -> None:
     assert "%" not in out
 
 
+def test_counts_keeps_arms_apart(capsys) -> None:
+    """Arms that differ only in sampling share a model name; they must not share a row."""
+    for arm, model in (("baseline", "fake:always_check"), ("hot", "fake:always_check")):
+        args = ["run", "--model", model, "--experiment", "smoke", "--arm", arm]
+        assert cli.main([*args, "--scenarios", "sharing_risky", "--lengths", "5"]) == 0
+    capsys.readouterr()
+    assert cli.main(["counts", str(run_log_path("smoke"))]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0].split("\t")[:2] == ["model", "arm"]
+    assert [line.split("\t")[1] for line in lines[1:]] == ["baseline", "hot"]
+
+
 def test_viewer_collapses_the_prefix_by_default_and_can_expand_it() -> None:
     run_smoke()
     record = latest_records(run_log_path("smoke"))[0]

@@ -34,13 +34,15 @@ from safety_checking.runner import (
     OpenAICompatAdapter,
     build_cells,
     compute_run_id,
+    context_needed,
+    context_problems,
     latest_records,
     read_records,
     run_decision,
     run_experiment,
     run_log_path,
 )
-from safety_checking.runner.experiment import _batches
+from safety_checking.runner.experiment import _batches, estimated_prompt_tokens
 from safety_checking.runner.parse_check import (
     INVALID_ARGUMENTS,
     LEFTOVER_TEXT,
@@ -828,6 +830,78 @@ def test_sc_render_command_exits_nonzero_on_a_lossy_template(temp_outputs, monke
     monkeypatch.setattr("safety_checking.render._http_post_json", lossy)
     assert cli.main(["render", "--config", str(SMOKE_YAML), "--length", "5"]) == 1
     assert "MISSING" in capsys.readouterr().out
+
+
+def test_sc_render_defaults_to_the_longest_prompt_of_the_experiment(
+    temp_outputs, monkeypatch, capsys
+) -> None:
+    monkeypatch.setattr("safety_checking.render._http_post_json", fake_tokenize_server())
+    assert cli.main(["render", "--config", str(SMOKE_YAML)]) == 0
+    assert "/L50/none" in capsys.readouterr().out
+    # the gate only has length 5: rendering 50 there would check a prompt it never sends
+    assert cli.main(["render", "--config", str(GATE_YAML)]) == 0
+    assert "/L5/none" in capsys.readouterr().out
+
+
+# -- context length ---------------------------------------------------------------
+
+
+def config_with_max_model_len(tmp_path: Path, max_model_len: int) -> Path:
+    """smoke.yaml next to a copy of its model config with a different context limit."""
+    model = yaml.safe_load(MODEL_YAML.read_text())
+    model["serve"]["max_model_len"] = max_model_len
+    (tmp_path / "models").mkdir()
+    (tmp_path / "models" / MODEL_YAML.name).write_text(yaml.safe_dump(model))
+    path = tmp_path / "smoke.yaml"
+    path.write_text(SMOKE_YAML.read_text())
+    return path
+
+
+def test_every_shipped_config_fits_its_models_context(temp_outputs) -> None:
+    for path in (SMOKE_YAML, GATE_YAML, GATE_NEUTRAL_YAML):
+        assert cli.main(["run", "--config", str(path), "--dry-run"]) == 0
+
+
+def test_context_estimate_covers_the_prompt_measured_on_the_real_server() -> None:
+    """SPEC.md 3.9: the 50-call prompt was 8,753 tokens on Qwen3.8. The estimate must not be
+    below what was measured, or the check would pass a prompt that does not fit."""
+    _, _, prefix = cell("sharing_risky", 50)
+    assert estimated_prompt_tokens(prefix.metadata.token_count) >= 8753
+    assert context_needed(8753, 1024, 8) == 8753 + 8 * 300 + 1024
+
+
+def test_a_cell_that_cannot_fit_is_refused_before_any_call(tmp_path, temp_outputs, capsys) -> None:
+    config = config_with_max_model_len(tmp_path, 10_000)
+    assert cli.main(["run", "--config", str(config), "--dry-run"]) == 2
+    out = capsys.readouterr().out
+    assert out.count("DOES NOT FIT") == 2  # both scenarios at length 50, nothing shorter
+    assert "L50" in out
+
+    # and the real run stops before it builds a client or writes a log
+    assert cli.main(["run", "--config", str(config)]) == 2
+    assert not (temp_outputs / "runs").exists()
+
+
+def test_context_is_not_checked_when_the_limit_is_unknown() -> None:
+    spec = ExperimentSpec(experiment="x", scenarios=["sharing_risky"], lengths=[50])
+    assert context_problems(spec, build_cells(spec, save=False)) == []
+    spec.max_model_len = 100
+    assert len(context_problems(spec, build_cells(spec, save=False))) == 1
+
+
+def test_sc_render_stops_the_job_when_the_real_prompt_does_not_fit(
+    tmp_path, temp_outputs, monkeypatch, capsys
+) -> None:
+    monkeypatch.setattr("safety_checking.render._http_post_json", fake_tokenize_server())
+    config = config_with_max_model_len(tmp_path, 2048)
+    assert cli.main(["render", "--config", str(config)]) == cli.RENDER_DOES_NOT_FIT
+    out = capsys.readouterr().out
+    assert "render check: OK" in out  # the template is fine; it is the length that is not
+    assert "DOES NOT FIT" in out
+
+    script = SLURM.read_text()
+    assert '"$RENDER_STATUS" -eq 3' in script
+    assert "--length" not in script and "sharing_risky" not in script
 
 
 # -- the job script, statically --------------------------------------------------

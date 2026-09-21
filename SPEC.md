@@ -284,6 +284,16 @@ record per run id. Each record also carries a convenience copy of the score and 
 bound), and makes no calls. It works for real model specs without a key, because clients are
 created lazily. `sc run` refuses any non-fake model without `--confirm-paid`.
 
+**Context length.** A request whose prompt plus `max_tokens` exceeds `max_model_len` is a 400,
+which is never retried: every sample of that cell would be logged as an error, and again on
+every rerun. So a run needs `prompt + max_steps x 300 + max_tokens` tokens of context, and it is
+checked twice. Before submission, `sc run` (with or without `--dry-run`) estimates the prompt as
+1.35 x (yardstick prefix tokens + 700 for tool specs), prints it per cell, and exits 2 if any
+cell exceeds the model config's `max_model_len`. The 1.35 comes from one observation (Qwen3.8
+rendered the 50-call prompt at 1.18 x the yardstick) and is conservative for long prompts only.
+Inside the job, `sc render` has the server's own token count and makes the exact check. The
+limit is never hashed: it gates a run and changes nothing about one.
+
 Adapters: `FakeModel` with `always_check` and `never_check` policies for tests; an
 OpenAI-compatible adapter with a configurable `base_url` (tested only against a mocked client),
 which retries rate limits, timeouts and 5xx but never a 4xx, and which puts `base_url` into its
@@ -297,8 +307,9 @@ calls it when present. Only the fake models need it.
 collapsed to a one-line summary plus its shared five-call tail (`--full-prefix` expands it), the
 decision segment in full, and the score.
 
-`sc counts <jsonl>` prints outcome counts per (model, scenario, length, pattern). Counts only:
-it never prints a rate, because rates are defined in PREREG.md.
+`sc counts <jsonl>` prints outcome counts per (model, arm, scenario, length, pattern). The arm is
+in the key because arms that differ only in a `sampling_override` share a model name. Counts
+only: it never prints a rate, because rates are defined in PREREG.md.
 
 ### 3.9 GPU path: vLLM on LS6
 
@@ -444,7 +455,12 @@ sends a prefix plus the decision request to the server's `/tokenize` (with the t
 `outputs/renders/`. It then walks the text once, left to right, and requires every system and
 user turn, every tool call's name and string arguments, every tool result and every assistant
 summary to appear after the previous one. Anything absent is reported as missing, anything
-present but elsewhere as out of order. The Slurm script runs it before the experiment.
+present but elsewhere as out of order. The Slurm script runs it before the experiment. With no
+`--scenario`, `--length` or `--pattern` it renders the experiment's longest prompt (the largest
+yardstick count among the config's scenarios and patterns at its longest length), which the job
+script relies on: it used to render `sharing_risky` at length 50 whatever the config said. It
+also makes the exact context-length check (3.7) and exits 3 when the prompt does not fit, which
+stops the job whether or not `RENDER_STRICT` is set.
 
 **The job script** (`scripts/serve_and_run.slurm`): one node; verifies the installed vLLM is the
 pinned one (package metadata only); sets `HF_HUB_OFFLINE=1`, since weights are downloaded

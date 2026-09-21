@@ -34,7 +34,14 @@ from .logprob import LogprobError, logprob_log_path, read_logprob_records, run_l
 from .paths import outputs_dir, prefixes_dir
 from .render import render_prefix
 from .runner.adapters import ModelAdapter, OpenAICompatAdapter, make_adapter
-from .runner.experiment import ExperimentSpec, build_cells, dry_run, run_experiment
+from .runner.experiment import (
+    ExperimentSpec,
+    build_cells,
+    context_needed,
+    context_problems,
+    dry_run,
+    run_experiment,
+)
 from .runner.store import latest_records, run_log_path
 from .scenarios.loader import list_scenarios, load_scenario, load_scenario_world
 from .viewer import render_record
@@ -132,6 +139,7 @@ def _spec_and_adapter(args: argparse.Namespace) -> tuple[ExperimentSpec, ModelAd
             concurrency=experiment.concurrency,
             params=experiment.request_params(model),
             base_seed=model.request.base_seed,
+            max_model_len=model.serve.max_model_len,
         )
         return spec, OpenAICompatAdapter.from_model_config(model, base_url=args.base_url)
     if not args.model:
@@ -148,6 +156,19 @@ def _is_free(adapter: ModelAdapter) -> bool:
     return adapter.name.startswith("fake:") or bool(getattr(adapter, "is_local", False))
 
 
+def _refuse_cells_that_cannot_fit(spec: ExperimentSpec, cells: list[Any]) -> bool:
+    """A prompt over the context limit is a 400 on every sample of its cell, never retried."""
+    problems = context_problems(spec, cells)
+    for problem in problems:
+        console.print(f"[red]DOES NOT FIT[/red] {problem}")
+    if problems:
+        console.print(
+            "Raise serve.max_model_len in the model config (new run ids) or drop the length. "
+            "The numbers are estimates; `sc render` on a GPU node gives the exact count."
+        )
+    return bool(problems)
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     load_dotenv()
     spec, adapter = _spec_and_adapter(args)
@@ -157,7 +178,13 @@ def cmd_run(args: argparse.Namespace) -> int:
         cells = build_cells(spec, save=False)
         report = dry_run(spec, adapter.name, log_path, cells)
         table = Table(
-            "cell", "prefix tokens", "samples", "done", "est. prompt tok", "est. completion tok"
+            "cell",
+            "prefix tokens",
+            "samples",
+            "done",
+            "est. prompt tok",
+            "est. completion tok",
+            "est. context",
         )
         for cell in report.cells:
             table.add_row(
@@ -167,6 +194,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                 str(cell.n_done),
                 f"{cell.est_prompt_tokens:,}",
                 f"{cell.est_completion_tokens:,}",
+                f"{cell.est_context_tokens:,}",
             )
         console.print(table)
         console.print(
@@ -175,7 +203,11 @@ def cmd_run(args: argparse.Namespace) -> int:
             f"Rough upper bound with no prompt caching: {report.est_prompt_tokens:,} prompt "
             f"and {report.est_completion_tokens:,} completion tokens. No calls made."
         )
-        return 0
+        if spec.max_model_len is not None:
+            console.print(
+                f"Context per run is checked against max_model_len {spec.max_model_len:,}."
+            )
+        return 2 if _refuse_cells_that_cannot_fit(spec, cells) else 0
 
     if not _is_free(adapter) and not args.confirm_paid:
         console.print(
@@ -186,6 +218,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         return 2
 
     cells = build_cells(spec)
+    if _refuse_cells_that_cannot_fit(spec, cells):
+        return 2
     summary = run_experiment(spec, adapter, log_path, cells)
     console.print(
         f"{summary.n_new} new, {summary.n_skipped} skipped, {summary.n_errors} errors -> {log_path}"
@@ -242,13 +276,27 @@ def cmd_serve_args(args: argparse.Namespace) -> int:
     return 0
 
 
+#: `sc render` exit status when the prompt does not fit the context: the job script stops on it
+RENDER_DOES_NOT_FIT = 3
+
+
 def cmd_render(args: argparse.Namespace) -> int:
-    """Render one prefix through the served model's chat template and verify it."""
-    _, model = load_experiment_config(args.config)
-    scenario = load_scenario(args.scenario)
-    prefix = build_prefix(
-        scenario, load_scenario_world(scenario), args.length, prior_check_pattern=args.pattern
-    )
+    """Render one prefix through the served model's chat template and verify it.
+
+    With no --scenario/--length/--pattern it renders the experiment's longest prompt: the one
+    most likely to break a template or overrun the context, and a superset of the shorter ones.
+    """
+    experiment, model = load_experiment_config(args.config)
+    candidates = []
+    for name in [args.scenario] if args.scenario else experiment.scenarios:
+        scenario = load_scenario(name)
+        world = load_scenario_world(scenario)
+        for pattern in [args.pattern] if args.pattern else experiment.patterns:
+            length = args.length or max(experiment.lengths)
+            prefix = build_prefix(scenario, world, length, prior_check_pattern=pattern)
+            candidates.append((scenario, prefix))
+    scenario, prefix = max(candidates, key=lambda c: c[1].metadata.token_count)
+    console.print(f"rendering {scenario.id}/L{prefix.length}/{prefix.prior_check_pattern}")
     path, report = render_prefix(prefix, scenario, model, base_url=args.base_url)
     console.print(f"wrote {path} ({report.n_prompt_tokens} prompt tokens)")
     console.print(
@@ -262,6 +310,15 @@ def cmd_render(args: argparse.Namespace) -> int:
     for label in report.out_of_order:
         console.print(f"[red]OUT OF ORDER[/red] {label}")
     console.print("render check: " + ("OK" if report.ok else "FAILED"))
+
+    if report.n_prompt_tokens is not None:
+        max_tokens = int(experiment.request_params(model).get("max_tokens") or 0)
+        needed = context_needed(report.n_prompt_tokens, max_tokens, experiment.max_steps)
+        limit = model.serve.max_model_len
+        console.print(f"context: a run needs about {needed:,} tokens, max_model_len is {limit:,}")
+        if needed > limit:
+            console.print("[red]DOES NOT FIT[/red]: every sample of this cell would be a 400")
+            return RENDER_DOES_NOT_FIT
     return 0 if report.ok else 1
 
 
@@ -347,18 +404,19 @@ def cmd_show(args: argparse.Namespace) -> int:
 
 def cmd_counts(args: argparse.Namespace) -> int:
     """Outcome counts per cell. Counts only: rates are defined in PREREG.md, not here."""
-    counts: dict[tuple[str, str, int, str], Counter[str]] = {}
+    counts: dict[tuple[str, str, str, int, str], Counter[str]] = {}
     for record in latest_records(Path(args.file)):
         t = record.trajectory
-        key = (t.model, t.scenario_id, t.length, t.prior_check_pattern)
+        # the arm too: arms that differ only in sampling share a model name
+        key = (t.model, t.arm, t.scenario_id, t.length, t.prior_check_pattern)
         outcome = record.score.outcome if record.score else f"<{t.stop_reason}>"
         counts.setdefault(key, Counter())[outcome] += 1
     # plain tab-separated lines: a table would truncate the outcome names in a narrow terminal
-    sys.stdout.write("model\tscenario\tlength\tpattern\tn\toutcomes\n")
+    sys.stdout.write("model\tarm\tscenario\tlength\tpattern\tn\toutcomes\n")
     for key in sorted(counts):
         tally = counts[key]
         outcomes = ", ".join(f"{name}={n}" for name, n in sorted(tally.items()))
-        row = [key[0], key[1], str(key[2]), key[3], str(sum(tally.values())), outcomes]
+        row = [*key[:3], str(key[3]), key[4], str(sum(tally.values())), outcomes]
         sys.stdout.write("\t".join(row) + "\n")
     return 0
 
@@ -402,9 +460,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     render = commands.add_parser("render", help="render a prefix through the chat template")
     render.add_argument("--config", required=True, help="experiment YAML")
-    render.add_argument("--scenario", default="sharing_risky")
-    render.add_argument("--length", type=int, default=50)
-    render.add_argument("--pattern", default="none", choices=PRIOR_CHECK_PATTERNS)
+    render.add_argument("--scenario", help="default: whichever of the config's is longest")
+    render.add_argument("--length", type=int, help="default: the config's longest")
+    render.add_argument("--pattern", choices=PRIOR_CHECK_PATTERNS)
     render.add_argument("--base-url")
     render.set_defaults(func=cmd_render)
 

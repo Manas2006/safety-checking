@@ -14,6 +14,8 @@ from .experiment import (
     ExperimentSpec,
     RunSummary,
     build_cells,
+    context_needed,
+    context_problems,
     dry_run,
     run_experiment,
 )
@@ -44,6 +46,8 @@ __all__ = [
     "build_cells",
     "completed_run_ids",
     "compute_run_id",
+    "context_needed",
+    "context_problems",
     "dry_run",
     "latest_records",
     "make_adapter",

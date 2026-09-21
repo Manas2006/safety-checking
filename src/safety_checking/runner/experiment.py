@@ -28,6 +28,30 @@ EST_STEPS_PER_RUN = 3
 EST_COMPLETION_TOKENS_PER_STEP = 60
 EST_TOOL_SPEC_TOKENS = 700
 
+#: Planning numbers for the context-length check. The yardstick tokenizer is not the model's,
+#: and a chat template adds its own framing: Qwen3.8 rendered the 50-call prompt at 8,753 tokens
+#: against a yardstick of 7,388 (1.18x). 1.35 leaves room for a less efficient tokenizer. One
+#: observation, so it is a planning number: a template's fixed cost (Qwen spends about 3k tokens
+#: on the tool specs) makes it an underestimate for short prompts, which are nowhere near a
+#: limit, and conservative for long ones, which are. The exact check is `sc render`, which asks
+#: the server; this one runs on the login node before a job is submitted.
+TOKENIZER_MARGIN = 1.35
+#: a decision step adds a tool call and its result to the context
+EST_CONTEXT_GROWTH_PER_STEP = 300
+
+
+def context_needed(prompt_tokens: int, max_tokens: int, max_steps: int) -> int:
+    """Context a run needs: the prompt, every step's growth, and room for the last reply.
+
+    A request whose prompt plus ``max_tokens`` exceeds the server's limit is refused with a
+    400, which is never retried, so the whole cell would be logged as errors.
+    """
+    return prompt_tokens + max_steps * EST_CONTEXT_GROWTH_PER_STEP + max_tokens
+
+
+def estimated_prompt_tokens(prefix_tokens: int) -> int:
+    return int((prefix_tokens + EST_TOOL_SPEC_TOKENS) * TOKENIZER_MARGIN)
+
 
 class Cell(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -57,6 +81,8 @@ class ExperimentSpec(BaseModel):
     concurrency: int = 1
     #: per-request seed is base_seed + sample_index. None sends no seed.
     base_seed: int | None = None
+    #: the served model's context limit, when known. Never hashed: it only gates the run.
+    max_model_len: int | None = None
 
 
 def build_cells(
@@ -87,6 +113,8 @@ class CellPlan(BaseModel):
     n_done: int
     est_prompt_tokens: int
     est_completion_tokens: int
+    #: what one run of this cell needs from the model's context window (an estimate)
+    est_context_tokens: int = 0
 
 
 class DryRunReport(BaseModel):
@@ -123,6 +151,27 @@ def _run_ids(cell: Cell, model: str, spec: ExperimentSpec) -> list[str]:
     ]
 
 
+def _est_context_tokens(cell: Cell, spec: ExperimentSpec) -> int:
+    return context_needed(
+        estimated_prompt_tokens(cell.prefix.metadata.token_count),
+        int(spec.params.get("max_tokens") or 0),
+        spec.max_steps,
+    )
+
+
+def context_problems(spec: ExperimentSpec, cells: list[Cell]) -> list[str]:
+    """One line per cell that is estimated not to fit the model's context. Empty when the
+    limit is unknown (fake models, a bare ``--model``)."""
+    if spec.max_model_len is None:
+        return []
+    return [
+        f"{cell.key}: needs about {needed:,} tokens of context, max_model_len is "
+        f"{spec.max_model_len:,}"
+        for cell in cells
+        if (needed := _est_context_tokens(cell, spec)) > spec.max_model_len
+    ]
+
+
 def dry_run(
     spec: ExperimentSpec, model_name: str, log_path: Path, cells: list[Cell]
 ) -> DryRunReport:
@@ -148,6 +197,7 @@ def dry_run(
                 n_done=n_done,
                 est_prompt_tokens=todo * EST_STEPS_PER_RUN * per_step,
                 est_completion_tokens=todo * EST_STEPS_PER_RUN * EST_COMPLETION_TOKENS_PER_STEP,
+                est_context_tokens=_est_context_tokens(cell, spec),
             )
         )
     return DryRunReport(experiment=spec.experiment, model=model_name, arm=spec.arm, cells=plans)
