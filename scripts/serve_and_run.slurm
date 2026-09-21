@@ -8,7 +8,7 @@
 # other on the same server start. The optional third argument is a model YAML to use instead of
 # the one the experiment names, so one experiment config serves every model:
 #
-#   sbatch -A <allocation> -p gpu-h100 scripts/serve_and_run.slurm configs/smoke.yaml run configs/models/gpt-oss-120b.yaml
+#   sbatch -A <allocation> -p gpu-h100 scripts/serve_and_run.slurm configs/smoke.yaml run configs/models/gpt-oss-120b-low.yaml
 #
 # Submit from the repository root. The allocation is never written here; pass it with -A.
 # Queue and time limit below are the defaults for short tests and can be overridden on the

@@ -39,6 +39,11 @@ TOKENIZER_MARGIN = 1.35
 #: a decision step adds a tool call and its result to the context
 EST_CONTEXT_GROWTH_PER_STEP = 300
 
+#: Stop an experiment after this many runs in a row ended in an adapter error. Each already
+#: retried its request five times, so a run of them means the server is gone, and every further
+#: sample would spend its retries on a dead socket while the node is being paid for.
+MAX_CONSECUTIVE_ERRORS = 8
+
 
 def context_needed(prompt_tokens: int, max_tokens: int, max_steps: int) -> int:
     """Context a run needs: the prompt, every step's growth, and room for the last reply.
@@ -207,6 +212,8 @@ class RunSummary(BaseModel):
     n_new: int = 0
     n_skipped: int = 0
     n_errors: int = 0
+    #: stopped early after MAX_CONSECUTIVE_ERRORS failures in a row; the rest was not attempted
+    aborted: bool = False
     #: wall-clock seconds spent in this invocation, and provider-reported tokens for new runs
     elapsed_s: float = 0.0
     prompt_tokens: int = 0
@@ -240,8 +247,11 @@ def run_experiment(
     done = completed_run_ids(log_path)
     summary = RunSummary()
     started = time.perf_counter()
+    consecutive_errors = 0
 
     for cell in cells:
+        if summary.aborted:
+            break
         world = load_scenario_world(cell.scenario)
         if hasattr(adapter, "bind"):
             adapter.bind(cell.scenario)  # once, before any thread starts
@@ -277,7 +287,9 @@ def run_experiment(
                 scored = None
                 if trajectory.stop_reason == "error":
                     summary.n_errors += 1
+                    consecutive_errors += 1
                 else:
+                    consecutive_errors = 0
                     scored = score(trajectory, cell.scenario, world)
                     done.add(trajectory.run_id)
                     summary.prompt_tokens += scored.usage_prompt_tokens or 0
@@ -288,6 +300,10 @@ def run_experiment(
                     RunRecord(run_id=trajectory.run_id, trajectory=trajectory, score=scored),
                 )
                 summary.n_new += 1
+            # checked per batch, so everything that was sampled is on disk before stopping
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                summary.aborted = True
+                break
 
     summary.elapsed_s = time.perf_counter() - started
     return summary

@@ -280,6 +280,12 @@ runs resumable and idempotent. An adapter failure is logged with `stop_reason="e
 record per run id. Each record also carries a convenience copy of the score and a
 `scorer_version`, but scoring is pure, so the analysis can always rescore from the trajectory.
 
+Eight runs in a row ending in an adapter error stop the experiment (`RunSummary.aborted`). Each
+of them already retried its request five times, so a streak means the server is gone, and the
+remaining samples would each spend their retries on a dead socket while the node is paid for.
+The check runs at batch boundaries, after the batch is on disk; scattered errors reset the
+count, and errored runs are retried by the next invocation as before.
+
 `--dry-run` prints the cell counts, how many runs are already done, and a rough token estimate
 (prefix plus tool specs, times an assumed three steps per run, with no prompt caching: an upper
 bound), and makes no calls. It works for real model specs without a key, because clients are

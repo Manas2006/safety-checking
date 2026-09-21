@@ -226,6 +226,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     console.print(
         f"{summary.n_new} new, {summary.n_skipped} skipped, {summary.n_errors} errors -> {log_path}"
     )
+    if summary.aborted:
+        console.print(
+            "[red]Stopped early[/red]: too many runs in a row ended in an error, which means "
+            "the server is gone. Errored runs are retried by the next invocation."
+        )
     rate = summary.completion_tokens_per_s
     console.print(
         f"{summary.elapsed_s:.1f}s wall, {summary.prompt_tokens:,} prompt tokens "

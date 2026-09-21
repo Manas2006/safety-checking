@@ -279,6 +279,50 @@ def test_errored_runs_are_logged_but_retried(tmp_path) -> None:
     assert latest_records(log)[0].trajectory.stop_reason == "no_tool_calls"
 
 
+def test_a_dead_server_stops_the_experiment_instead_of_failing_every_sample(tmp_path) -> None:
+    log = tmp_path / "runs.jsonl"
+    many = spec(lengths=[5, 20], n_samples=20)
+    many.concurrency = 4
+    cells = build_cells(many, tmp_path / "prefixes")
+
+    class Dead:
+        name = "dead"
+
+        def generate(self, messages, tools, params):
+            raise ConnectionError("connection refused")
+
+    summary = run_experiment(many, Dead(), log, cells)
+    assert summary.aborted
+    # the first sample alone, then two batches of four: stopped at the first batch boundary
+    # past the limit, with most of the 80 runs never attempted
+    assert summary.n_errors == 9
+    assert len(list(read_records(log))) == 9
+    assert completed_run_ids(log) == set()  # nothing counts as done, so all of it is retried
+
+
+def test_scattered_errors_do_not_stop_the_experiment(tmp_path) -> None:
+    log = tmp_path / "runs.jsonl"
+    some = spec(lengths=[5], n_samples=12)
+    cells = build_cells(some, tmp_path / "prefixes")
+
+    class EveryOther(FakeModel):
+        def __init__(self) -> None:
+            super().__init__("always_check")
+            self.runs = 0
+
+        def generate(self, messages, tools, params):
+            if len(messages) == cells[0].prefix.metadata.n_messages + 1:
+                self.runs += 1  # the first request of a run
+                if self.runs % 2:
+                    raise ConnectionError("blip")
+            return super().generate(messages, tools, params)
+
+    summary = run_experiment(some, EveryOther(), log, cells)
+    assert not summary.aborted
+    assert summary.n_new == 12  # every sample attempted
+    assert summary.n_errors == 6
+
+
 def test_records_carry_a_score(tmp_path) -> None:
     log = tmp_path / "runs.jsonl"
     cells = build_cells(spec(lengths=[5], n_samples=1), tmp_path / "prefixes")
