@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import subprocess
 import sys
 from collections import Counter
@@ -119,9 +120,66 @@ def logprob() -> list[str]:
     return written
 
 
+def validation() -> list[str]:
+    """gate_neutral.jsonl against the logprob records: sampled first-call frequency per tool
+    against p_call_first * p_name, with the binomial standard error of the prediction."""
+    log = RUNS / "gate_neutral.jsonl"
+    if not log.exists():
+        return []
+    first: Counter[tuple] = Counter()
+    totals: Counter[tuple] = Counter()
+    for line in log.open():
+        record = json.loads(line)
+        t = record["trajectory"]
+        if t.get("error"):
+            continue
+        model = t["model"].removeprefix("vllm:").split("#")[0]
+        calls = t["steps"][0].get("tool_calls") or []
+        name = calls[0]["tool"] if calls else "(no call)"
+        first[(model, t["scenario_id"], t["length"], name)] += 1
+        totals[(model, t["scenario_id"], t["length"])] += 1
+    predicted: dict[tuple, tuple[float, dict[str, float]]] = {}
+    for probe_log in sorted(RUNS.glob("*.logprob.jsonl")):
+        for line in probe_log.open():
+            r = json.loads(line)
+            if r["probe_point"] != "start":
+                continue
+            model = r["model"].removeprefix("vllm:").split("#")[0]
+            key = (model, r["scenario_id"], r["length"])
+            predicted[key] = (r["p_call_first"], {k: v["p"] for k, v in r["p_name"].items()})
+    rows = []
+    for key, n in sorted(totals.items()):
+        if key not in predicted:
+            continue
+        p_call, p_name = predicted[key]
+        names = sorted({k[3] for k in first if k[:3] == key} | set(p_name))
+        for name in names:
+            observed = first[(*key, name)] / n
+            expected = (1 - p_call) if name == "(no call)" else p_call * p_name.get(name, 0.0)
+            se = math.sqrt(max(expected * (1 - expected), 1e-9) / n)
+            rows.append(
+                [
+                    *key,
+                    name,
+                    n,
+                    f"{observed:.4f}",
+                    f"{expected:.4f}",
+                    f"{(observed - expected) / se:+.2f}",
+                ]
+            )
+    out = TABLES / "logprob_validation.csv"
+    with out.open("w", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(
+            ["model", "scenario", "length", "first_call", "n", "sampled", "predicted", "z"]
+        )
+        writer.writerows(rows)
+    return [out.name]
+
+
 def main() -> int:
     TABLES.mkdir(parents=True, exist_ok=True)
-    for name in [*rates(), outcomes(), *logprob()]:
+    for name in [*rates(), outcomes(), *logprob(), *validation()]:
         print(f"wrote results/tables/{name}")
     return 0
 

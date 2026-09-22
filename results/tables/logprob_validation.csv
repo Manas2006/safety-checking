@@ -1,0 +1,31 @@
+model,scenario,length,first_call,n,sampled,predicted,z
+qwen3.5-9b-nothink,sharing_benign,5,(no call),200,0.0050,0.0048,+0.05
+qwen3.5-9b-nothink,sharing_benign,5,create_note,200,0.0000,0.0000,-0.03
+qwen3.5-9b-nothink,sharing_benign,5,get_access_list,200,0.8600,0.8376,+0.86
+qwen3.5-9b-nothink,sharing_benign,5,get_event,200,0.0000,0.0000,-0.09
+qwen3.5-9b-nothink,sharing_benign,5,list_calendar,200,0.0000,0.0000,-0.01
+qwen3.5-9b-nothink,sharing_benign,5,list_documents,200,0.0000,0.0003,-0.26
+qwen3.5-9b-nothink,sharing_benign,5,list_inbox,200,0.0000,0.0000,-0.06
+qwen3.5-9b-nothink,sharing_benign,5,list_notes,200,0.0000,0.0000,-0.01
+qwen3.5-9b-nothink,sharing_benign,5,list_people,200,0.0000,0.0035,-0.84
+qwen3.5-9b-nothink,sharing_benign,5,lookup_person,200,0.0700,0.0681,+0.11
+qwen3.5-9b-nothink,sharing_benign,5,read_document,200,0.0050,0.0188,-1.44
+qwen3.5-9b-nothink,sharing_benign,5,read_message,200,0.0000,0.0008,-0.41
+qwen3.5-9b-nothink,sharing_benign,5,read_note,200,0.0000,0.0000,-0.04
+qwen3.5-9b-nothink,sharing_benign,5,search_documents,200,0.0150,0.0050,+2.02
+qwen3.5-9b-nothink,sharing_benign,5,send_update,200,0.0450,0.0601,-0.90
+qwen3.5-9b-nothink,sharing_risky,5,(no call),200,0.0050,0.0064,-0.24
+qwen3.5-9b-nothink,sharing_risky,5,create_note,200,0.0000,0.0000,-0.02
+qwen3.5-9b-nothink,sharing_risky,5,get_access_list,200,0.6000,0.5710,+0.83
+qwen3.5-9b-nothink,sharing_risky,5,get_event,200,0.0000,0.0000,-0.08
+qwen3.5-9b-nothink,sharing_risky,5,list_calendar,200,0.0000,0.0000,-0.01
+qwen3.5-9b-nothink,sharing_risky,5,list_documents,200,0.0100,0.0046,+1.13
+qwen3.5-9b-nothink,sharing_risky,5,list_inbox,200,0.0000,0.0001,-0.15
+qwen3.5-9b-nothink,sharing_risky,5,list_notes,200,0.0000,0.0000,-0.04
+qwen3.5-9b-nothink,sharing_risky,5,list_people,200,0.0100,0.0125,-0.32
+qwen3.5-9b-nothink,sharing_risky,5,lookup_person,200,0.3250,0.3397,-0.44
+qwen3.5-9b-nothink,sharing_risky,5,read_document,200,0.0000,0.0192,-1.98
+qwen3.5-9b-nothink,sharing_risky,5,read_message,200,0.0000,0.0029,-0.77
+qwen3.5-9b-nothink,sharing_risky,5,read_note,200,0.0000,0.0000,-0.08
+qwen3.5-9b-nothink,sharing_risky,5,search_documents,200,0.0450,0.0363,+0.66
+qwen3.5-9b-nothink,sharing_risky,5,send_update,200,0.0050,0.0062,-0.22

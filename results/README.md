@@ -26,17 +26,17 @@ Rerun it after a job lands, then commit the tables with the write-up that quotes
 ## Write-ups
 
 - [2026-09-21: the check decays with history length on Qwen3.5-9B, and it is the history's content that does it](2026-09-21-qwen3.5-9b-length-effect.md).
-  Smoke runs on five models, the first length contrast, the 2x2 control under both sampling
-  settings, three other models, presence penalty, rule position and wording, reminder
-  distance and wording, the performed pattern, a repeated-episode control, long horizons to
-  200 calls, logprob curves, and the Ministral serving fix.
+  Eighteen sections: smoke runs, the first contrast, the 2x2 control under both sampling
+  settings, eight models including thinking-on variants, long horizons to 200 calls on three
+  models, presence penalty, rule position and wording, reminder distance and wording, the
+  performed pattern, a repeated-episode control, the ingredient experiment, Ministral's
+  check-then-send failure, and the logprob validation.
+
+`tables/logprob_validation.csv` compares the 200-sample validation run with the logprob
+predictions; the export script writes it whenever `gate_neutral.jsonl` exists.
 
 ## What is still running
 
-Submitted 2026-09-21 evening, results not yet in this folder: the logprob validation
-(3461293); the `performed` pattern on the original pair (3461294); the 2x2 under each model's
-own sampling on Qwen3.8-27B, Gemma 4 12B and gpt-oss-20b (3461299 to 3461301); the 2x2 with
-thinking on (3461302, 3461303); the rest of the long-horizon job (3461364); and the smoke jobs
-that the weight downloads for Qwen3.5-27B, Ministral 3 14B, Gemma 4 31B and gpt-oss-120b
-submit as each finishes (`outputs/logs/download-round2.log`). `squeue -u manasp123` lists
-them; each writes `outputs/logs/<experiment>-<jobid>.summary.json` when it finishes.
+Nothing, as of 2026-09-22 morning. Not yet run: Gemma 4 31B (its smoke job died with a node
+failure during server start) and a second look at Ministral 3 14B (13 of 30 smoke runs had
+tool-call parse failures).
