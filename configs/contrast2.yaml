@@ -5,7 +5,8 @@
 #   recipient on the access list    sharing_incontext_benign   sharing_lookup_benign
 #   recipient NOT on the list       sharing_incontext_risky    sharing_lookup_risky
 #
-# 4 scenarios x 2 lengths x 50 samples = 400 runs. Written for qwen3.5-9b-nothink after
+# 4 scenarios x 3 lengths x 50 samples = 600 runs (length 20 added 2026-09-21 so the curve
+# has a middle point). Written for qwen3.5-9b-nothink after
 # contrast.yaml (job 3461091) found 1.00 -> 0.66 in sharing_benign and 1.00 -> 1.00 in
 # sharing_risky; pass the model as the job script's third argument. About twice contrast.yaml's
 # run time, still well inside gpu-a100-dev's 30 minutes.
@@ -16,9 +17,19 @@ scenarios:
   - sharing_incontext_risky
   - sharing_lookup_benign
   - sharing_lookup_risky
-lengths: [5, 50]
+lengths: [5, 20, 50]
 patterns: [none]
 n_samples: 50
 arm: baseline
 max_steps: 8
 concurrency: 16
+
+# Logprob mode only (`both` or `logprob` on the job line): the same probe points as smoke.yaml.
+# `after_lookup` is a scripted lookup_person on the recipient; in the in-context scenarios the
+# model does not need it, so `start` is the probe that matters there.
+probe_points:
+  - id: start
+  - id: after_lookup
+    calls:
+      - tool: lookup_person
+        args: {query: $recipient_first_name}

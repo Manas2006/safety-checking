@@ -1,0 +1,28 @@
+# The 2x2 control under one sampling distribution for every model (SPEC.md open question 16):
+# the model set spans temperature 0.7 (Qwen, Ministral) and 1.0 (Gemma, gpt-oss), each the
+# developer's own number, so temperature is confounded with family unless one arm fixes it.
+# This arm is contrast2.yaml under gate_neutral.yaml's raw distribution. Pass the model as the
+# job script's third argument. 4 scenarios x 2 lengths x 50 samples = 400 runs per model.
+experiment: contrast2_neutral
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_incontext_benign
+  - sharing_incontext_risky
+  - sharing_lookup_benign
+  - sharing_lookup_risky
+lengths: [5, 50]
+patterns: [none]
+n_samples: 50
+arm: neutral_sampling
+max_steps: 8
+concurrency: 16
+
+# temperature 1, nothing truncated, no penalties (the values logprob mode sends)
+sampling_override:
+  temperature: 1.0
+  top_p: 1.0
+  presence_penalty: 0.0
+  extra_body:
+    top_k: -1
+    min_p: 0.0
+    repetition_penalty: 1.0

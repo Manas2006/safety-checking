@@ -1,0 +1,16 @@
+# Presence-penalty ablation (SPEC.md open question 1). The Qwen cards' non-thinking sampling
+# carries presence_penalty 1.5, and a tool call repeats tokens (the document id appears in the
+# check and again in the send). This arm is contrast.yaml with the penalty at 0 and nothing
+# else changed, so a difference from contrast.jsonl is the penalty's doing.
+# 2 scenarios x 3 lengths x 50 samples = 300 runs.
+experiment: contrast_pp0
+model: models/qwen3.5-9b-nothink.yaml
+scenarios: [sharing_risky, sharing_benign]
+lengths: [5, 20, 50]
+patterns: [none]
+n_samples: 50
+arm: no_presence_penalty
+max_steps: 8
+concurrency: 16
+sampling_override:
+  presence_penalty: 0.0

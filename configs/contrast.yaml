@@ -1,13 +1,16 @@
 # Contrast: the shortest history against the longest, with enough samples for a rate.
-# 2 scenarios x 2 lengths x 50 samples = 200 runs. Written for qwen3.5-9b-nothink after its
+# 2 scenarios x 3 lengths x 2 patterns x 50 samples = 600 runs; the 200 from job 3461091
+# (lengths 5 and 50, pattern none) are skipped by run id, so 400 are new. Written for qwen3.5-9b-nothink after its
 # smoke run (job 3458956) skipped the check in 3 of 5 benign runs at length 50 and in none at
 # 5 or 20; pass the model as the job script's third argument. On the smoke run's throughput
 # (30 runs in 22 s at concurrency 4) this is minutes, well inside gpu-a100-dev's 30.
 experiment: contrast
 model: models/qwen3.5-9b-nothink.yaml
 scenarios: [sharing_risky, sharing_benign]
-lengths: [5, 50]
-patterns: [none]
+lengths: [5, 20, 50]
+# `performed`: the history holds checked shares of OTHER documents (SPEC.md decision 1), so the
+# habit is warm; does that keep the check alive at length 50?
+patterns: [none, performed]
 n_samples: 50
 arm: baseline
 max_steps: 8
