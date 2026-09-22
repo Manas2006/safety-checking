@@ -1,0 +1,55 @@
+# gemma-4-12b-nothink.yaml with max_model_len 65536 so that the 200-call histories fit: same weights,
+# revision, sampling and server otherwise. A separate file because max_model_len is hashed
+# into every run id and the queued jobs read the original at start. Sized for one A100.
+#
+# Everything in this file is hashed into the adapter name, and so into every run id.
+
+id: gemma-4-12b-nothink-64k
+hf_repo: google/gemma-4-12B-it
+revision: 707f0a3b8a3c7ad586ed01e27eafbad8a27dd0f7
+served_model_name: gemma-4-12b
+
+serve:
+  vllm_version: "0.29.0"
+  tensor_parallel_size: 1
+  # see qwen3.5-9b-nothink.yaml; Gemma's 262k vocabulary will not count our prompts as o200k does
+  max_model_len: 65536
+  dtype: bfloat16
+  gpu_memory_utilization: 0.90
+  max_num_seqs: 16
+  seed: 0
+  tool_call_parser: gemma4
+  reasoning_parser: gemma4
+  enable_prefix_caching: true
+  host: 127.0.0.1
+  port: 8000
+  startup_timeout_s: 1200
+  extra_args:
+    # text only: skip multimodal profiling (recipe, "text-only workloads")
+    - --limit-mm-per-prompt
+    - '{"image": 0, "audio": 0, "video": 0}'
+  env:
+    # LS6 compute nodes have no nvcc. See qwen3.8-27b-nothink.yaml.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+
+request:
+  sampling:
+    temperature: 1.0
+    top_p: 0.95
+    max_tokens: 1024
+  extra_body:
+    top_k: 64
+    chat_template_kwargs:
+      enable_thinking: false
+  base_seed: 0
+
+# Logprob mode (SPEC.md 3.10). Read off this model's rendered prompt from job 3458971
+# (outputs/renders/sharing_risky.L50.none.gemma-4-12b-nothink.txt): a call is
+# "<|tool_call>call:NAME{ARGS}<tool_call|>". Not part of the config hash.
+logprob:
+  call_opener: "<|tool_call>call:"
+  name_terminator: "{"
+
+notes: >-
+  gemma-4-12b-nothink with a 65536 context, for the *_long scenarios (one A100). Everything else
+  is identical; the run ids differ because max_model_len is hashed.

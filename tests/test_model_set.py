@@ -48,7 +48,11 @@ REASONING_VARIANTS = {
 SCALE_VARIANTS = {"qwen3.5-27b-nothink": "qwen3.5-9b-nothink"}
 #: a base model served with a larger context window for the *_long scenarios: same weights,
 #: revision, sampling and served name, only max_model_len differs (and so the run ids)
-CONTEXT_VARIANTS = {"qwen3.5-9b-nothink-64k": "qwen3.5-9b-nothink"}
+CONTEXT_VARIANTS = {
+    "qwen3.5-9b-nothink-64k": "qwen3.5-9b-nothink",
+    "qwen3.8-27b-nothink-64k": "qwen3.8-27b-nothink",
+    "gemma-4-12b-nothink-64k": "gemma-4-12b-nothink",
+}
 
 
 def test_the_model_set_is_four_families_of_two() -> None:

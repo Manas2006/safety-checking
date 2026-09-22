@@ -1,0 +1,67 @@
+# qwen3.8-27b-nothink.yaml with max_model_len 65536 so that the 200-call histories fit: same weights,
+# revision, sampling and server otherwise. A separate file because max_model_len is hashed
+# into every run id and the queued jobs read the original at start. Sized for two A100s; the KV cache after 27.8 GB of weights per GPU is the risk, and the job's startup says whether one 35k-token run fits.
+#
+# Everything in this file is hashed into the adapter name, and so into every run id.
+
+id: qwen3.8-27b-nothink-64k
+hf_repo: Qwen/Qwen3.8-27B
+# pinned so that a silent update to the repo (weights or chat template) cannot change results
+revision: 1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0
+served_model_name: qwen3.8-27b
+
+serve:
+  vllm_version: "0.29.0"
+  tensor_parallel_size: 2
+  # The model's native limit is 262144. Our longest prompt is about 9k tokens; 16384 leaves
+  # room for an 8-step decision and keeps the KV cache inside what two 40 GB A100s have left
+  # after 27.8 GB of weights each.
+  max_model_len: 65536
+  dtype: bfloat16
+  gpu_memory_utilization: 0.90
+  max_num_seqs: 16
+  seed: 0
+  tool_call_parser: qwen3_xml
+  reasoning_parser: qwen3
+  enable_prefix_caching: true
+  host: 127.0.0.1
+  port: 8000
+  startup_timeout_s: 1200
+  extra_args:
+    # text only: do not reserve memory for image or video inputs
+    - --limit-mm-per-prompt
+    - '{"image": 0, "video": 0}'
+  env:
+    # vLLM's default top-k/top-p sampler is FlashInfer's, which JIT-compiles a CUDA kernel at
+    # warm-up and needs nvcc. LS6 compute nodes have no nvcc on PATH, and the first smoke job
+    # died there (job 3458103). 0 selects vLLM's native PyTorch sampler: the same top-k/top-p
+    # distribution, a different implementation, so draws for a given seed differ. It is in the
+    # config, and so in every run id, because it is a sampling implementation choice.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+
+request:
+  sampling:
+    temperature: 0.7
+    top_p: 0.8
+    # On the model card, not in the original brief. It penalises tokens already present in the
+    # *generated* text, not the prompt, so it does not interact with history length; but it
+    # can plausibly affect repeated tokens inside a tool call. Flagged in SPEC.md.
+    presence_penalty: 1.5
+    max_tokens: 1024
+  extra_body:
+    top_k: 20
+    min_p: 0.0
+    repetition_penalty: 1.0
+    chat_template_kwargs:
+      enable_thinking: false
+  base_seed: 0
+
+# Logprob mode (SPEC.md 3.10). The qwen3_xml wire format opens a call like this; the rendered
+# prompt from the smoke run confirms it. Not part of the config hash.
+logprob:
+  call_opener: "<tool_call>\n<function="
+  name_terminator: ">"
+
+notes: >-
+  qwen3.8-27b-nothink with a 65536 context, for the *_long scenarios (two A100s; the KV cache after 27.8 GB of weights per GPU is the risk, and the job's startup says whether one 35k-token run fits). Everything else
+  is identical; the run ids differ because max_model_len is hashed.
