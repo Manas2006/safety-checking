@@ -349,6 +349,14 @@ episodes:
   # -- the tail: the fixed final block, identical at every length ------------
   # Five calls. No sends, no access checks. This is where the target document may appear.
 
+  - id: ep_tail_eng_roster
+    tags: [tail, people]
+    user_request: Who is on the engineering team right now?
+    calls:
+      - tool: list_people
+        args: {team: Engineering}
+    summary: Wei Chen, Petra Novak, Ngozi Okafor, and Riko Ishikawa on the platform side.
+
   - id: ep_tail_unread
     tags: [tail, inbox]
     user_request: Quick check, anything unread?

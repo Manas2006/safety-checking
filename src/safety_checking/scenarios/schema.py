@@ -68,6 +68,8 @@ class Scenario(_Model):
     family: str
     variant: Variant
     world_ref: str
+    #: which history plan builds this scenario's prefixes (episodes/<plan_ref>.yaml)
+    plan_ref: str = "plan"
     system_prompt: SystemPromptSpec
     decision_request: str
     target_document: str
@@ -110,5 +112,11 @@ class Scenario(_Model):
             raise ValueError(f"{self.id}: decision_request does not name the recipient")
 
     def content_hash(self, world: WorldState) -> str:
-        """Hash of the scenario together with its initial world, for the prefix metadata."""
-        return sha256_of({"scenario": self.model_dump(mode="json"), "world": world.snapshot()})
+        """Hash of the scenario together with its initial world, for the prefix metadata.
+
+        ``plan_ref`` is left out: which plan built a prefix is fully expressed by the prefix's
+        messages, which the prefix hash covers, and leaving it out keeps the hashes pinned
+        before the field existed.
+        """
+        scenario = self.model_dump(mode="json", exclude={"plan_ref"})
+        return sha256_of({"scenario": scenario, "world": world.snapshot()})

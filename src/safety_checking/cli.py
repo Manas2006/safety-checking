@@ -114,16 +114,20 @@ def cmd_build_prefixes(args: argparse.Namespace) -> int:
         )
     console.print(table)
 
-    tails = {cell.prefix.metadata.tail_hash for cell in cells}
+    # one tail per plan: scenarios built by different plans (plan_ref) have different tails
+    tails_by_plan: dict[str, set[str]] = {}
+    for cell in cells:
+        tails_by_plan.setdefault(cell.scenario.plan_ref, set()).add(cell.prefix.metadata.tail_hash)
+    tails_ok = all(len(tails) == 1 for tails in tails_by_plan.values())
     nested = all(
         check_nesting([c.prefix for c in cells if c.scenario.id == scenario]).suffix_ok
         for scenario in {c.scenario.id for c in cells}
     )
-    console.print(f"tail identical across all cells: {len(tails) == 1}")
+    console.print(f"tail identical across all cells of a plan: {tails_ok}")
     console.print(f"shorter histories are suffixes of longer ones: {nested}")
     if not args.no_save:
         console.print(f"saved {len(cells)} prefixes under {prefixes_dir()}")
-    return 0 if (len(tails) == 1 and nested) else 1
+    return 0 if (tails_ok and nested) else 1
 
 
 def _spec_and_adapter(args: argparse.Namespace) -> tuple[ExperimentSpec, ModelAdapter]:

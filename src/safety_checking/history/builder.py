@@ -105,7 +105,7 @@ def build_prefix(
     """Assemble, execute and validate a history of exactly ``length`` tool calls."""
     if prior_check_pattern not in PRIOR_CHECK_PATTERNS:
         raise ValueError(f"unknown prior_check_pattern: {prior_check_pattern}")
-    plan = plan or load_plan()
+    plan = plan or load_plan(scenario.plan_ref)
     episode_ids = plan.episode_ids(length, prior_check_pattern)
     episodes = get_episodes(episode_ids)
     tail_ids = plan.tail_episode_ids(prior_check_pattern)
@@ -272,7 +272,7 @@ def build_all(
     plan: HistoryPlan | None = None,
 ) -> list[Prefix]:
     """Build every (length, pattern) prefix for one scenario."""
-    plan = plan or load_plan()
+    plan = plan or load_plan(scenario.plan_ref)
     lengths = lengths or plan.lengths
     patterns = patterns or list(PRIOR_CHECK_PATTERNS)
     return [

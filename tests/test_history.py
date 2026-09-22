@@ -205,19 +205,78 @@ PINNED_PREFIX_HASHES = {
 }
 
 
-def test_prefix_hashes_are_pinned() -> None:
+# The 2x2 control scenarios (plan_v2: the Engineering roster opens the tail). Their own tail.
+PINNED_TAIL_HASH_V2 = "f81e664594fa"
+PINNED_PREFIX_HASHES_V2 = {
+    "sharing_incontext_benign": {
+        "none": {
+            5: "d77b3a71839d4099e283a2339c4ba1096cb3d6e024837c9218df45205bc0c4f5",
+            20: "f6abcbc25559f6f2286472db77b740c1fbed7d49901b673aa66874904ebf9426",
+            50: "768b975313d884f2fd8e2928295a709ef5f0f495bea4091d64b4be1a3cb20b23",
+        },
+        "performed": {
+            5: "2d71279575783b6a438fb04e6b9379050535b8b4d300919376d2bc980866eca0",
+            20: "9957d07cc081f37ca899ce2abe59ded9156213d2783072c2c5643789904ca62a",
+            50: "69df9feaa2142cef0bbd95edd87e30211d4d0ace21475fcaca51664b899d95bb",
+        },
+    },
+    "sharing_incontext_risky": {
+        "none": {
+            5: "40699567fd7155af7dbc8ff2bb66af0c83f5db9d2f438c001b16b60084386e92",
+            20: "b15a5426fd579e9d31ed0b9c63c71ec63031dc99a5d3002425de05edce5f7314",
+            50: "cd9c18245733413cc1168554d9abb594b8e32a1cf3911d5ea102a9680b02b066",
+        },
+        "performed": {
+            5: "736adee8095418ae858a32f68039764fd163ac707994d53ee013543acd18518f",
+            20: "681f0ae1f737687d30cee4f98e3725ca0bc5b0f17bb7a2b0a658882036112baa",
+            50: "64728c2c6ab3f26a58704b2607304fd1b441cf1732678c3b4ce237b2793acd8b",
+        },
+    },
+    "sharing_lookup_benign": {
+        "none": {
+            5: "7ad31d58c07938288dbe41592a9721c6b4e2f38f2ca6cdb9b77fb9700c925cea",
+            20: "41c73c03f4ebf47d53f7f46b34e92b2843c15dc93c5ebb1f5d6c7d10a66f4f79",
+            50: "c0ee78913313c6e920a9637d6851b952580170528b4b275fceb89f1761e9881f",
+        },
+        "performed": {
+            5: "6bcd8192beaa93621f600c52ff2448776d65b91c8164e40ec5556a4de16ac7e8",
+            20: "73389dbd6ed5d2905e2e9e4e3f0cd0ae14794612cfbb0eb781e627c12400a1df",
+            50: "84d6649a6512a9ca3195499bdea5855e297e29551ae7c2102705cab8efe7f366",
+        },
+    },
+    "sharing_lookup_risky": {
+        "none": {
+            5: "1590bfe724b277e19abc082c672fed9b10f7c01a5d8d5dc62890a48c05a5d251",
+            20: "e9c41154c9b19443ce9b3954090c716f05c2cb45d8541f606822b6755843f988",
+            50: "744f3f694f95db8b6cdacaaad6497edd1f407a3855aa1363e6c134a1636068dc",
+        },
+        "performed": {
+            5: "94ee575d447df63bf31bf15420e71d9bcc053f0a17565188260b58ee0ce7a16e",
+            20: "fd6ba8f5dd7ac6c4d5c0deaab73842c978dbd9aec687491442b36dc76dd1f286",
+            50: "682b3baf39896559773d50e1f9435f6dfb589f9403da870718bc13b034503197",
+        },
+    },
+}
+
+
+@pytest.mark.parametrize(
+    ("pinned", "tail_hash"),
+    [(PINNED_PREFIX_HASHES, PINNED_TAIL_HASH), (PINNED_PREFIX_HASHES_V2, PINNED_TAIL_HASH_V2)],
+    ids=["plan", "plan_v2"],
+)
+def test_prefix_hashes_are_pinned(pinned, tail_hash) -> None:
     built: dict[str, dict[str, dict[int, str]]] = {}
-    for scenario_id in PINNED_PREFIX_HASHES:
+    for scenario_id in pinned:
         scenario = load_scenario(scenario_id)
         world = load_scenario_world(scenario)
         for pattern in PRIOR_CHECK_PATTERNS:
             for length in LENGTHS:
                 prefix = build(scenario, world, length, pattern)
-                assert prefix.metadata.tail_hash.startswith(PINNED_TAIL_HASH)
+                assert prefix.metadata.tail_hash.startswith(tail_hash)
                 built.setdefault(scenario_id, {}).setdefault(pattern, {})[length] = (
                     prefix.prefix_hash
                 )
-    assert built == PINNED_PREFIX_HASHES
+    assert built == pinned
 
 
 def test_prefix_hash_does_not_depend_on_the_tokenizer(scenario, world, monkeypatch) -> None:

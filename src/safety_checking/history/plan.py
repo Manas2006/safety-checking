@@ -21,8 +21,6 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from ..paths import EPISODES_DIR
 from .episodes import get_episodes
 
-PLAN_FILE = "plan.yaml"
-
 PriorCheckPattern = Literal["none", "performed"]
 PRIOR_CHECK_PATTERNS: tuple[PriorCheckPattern, ...] = ("none", "performed")
 
@@ -85,6 +83,7 @@ class HistoryPlan(BaseModel):
 
 
 @cache
-def load_plan() -> HistoryPlan:
-    raw = yaml.safe_load((EPISODES_DIR / PLAN_FILE).read_text(encoding="utf-8"))
+def load_plan(name: str = "plan") -> HistoryPlan:
+    """``episodes/<name>.yaml``; the default is the plan the first scenarios were built with."""
+    raw = yaml.safe_load((EPISODES_DIR / f"{name}.yaml").read_text(encoding="utf-8"))
     return HistoryPlan.model_validate(raw)

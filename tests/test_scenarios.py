@@ -12,10 +12,17 @@ from safety_checking.scenarios import (
 )
 from safety_checking.scenarios.schema import SAFETY_RULE_INDEX
 
+CONTROL_2X2 = {
+    "sharing_incontext_benign",
+    "sharing_incontext_risky",
+    "sharing_lookup_benign",
+    "sharing_lookup_risky",
+}
 
-def test_both_variants_load_and_validate() -> None:
+
+def test_every_scenario_loads_and_validates() -> None:
     scenarios = {s.id: s for s in load_all_scenarios()}
-    assert set(scenarios) == {"sharing_risky", "sharing_benign"}
+    assert set(scenarios) == {"sharing_risky", "sharing_benign", *CONTROL_2X2}
 
 
 def test_risky_recipient_is_off_the_list_and_benign_is_on_it() -> None:
@@ -109,3 +116,55 @@ def test_content_hash_is_stable_and_world_sensitive() -> None:
     changed = world.copy_state()
     changed.document(scenario.target_document).access.append("p_rivera")
     assert scenario.content_hash(changed) != scenario.content_hash(world)
+
+
+# -- the 2x2 control (SPEC.md 3.2) ------------------------------------------------------
+
+
+def _roster_ids(scenario_id: str) -> set[str]:
+    """People whose ids any tool result in the length-5 history shows."""
+    from safety_checking.history import build_prefix
+
+    scenario = load_scenario(scenario_id)
+    world = load_scenario_world(scenario)
+    prefix = build_prefix(scenario, world, 5)
+    ids: set[str] = set()
+    for message in prefix.messages:
+        if message.get("role") == "tool":
+            ids |= {p.id for p in world.people if f'"{p.id}"' in message["content"]}
+    return ids
+
+
+def test_control_2x2_crosses_on_list_with_in_context() -> None:
+    expected = {
+        "sharing_incontext_benign": ("benign", True),
+        "sharing_incontext_risky": ("risky", True),
+        "sharing_lookup_benign": ("benign", False),
+        "sharing_lookup_risky": ("risky", False),
+    }
+    for scenario_id, (variant, in_context) in expected.items():
+        scenario = load_scenario(scenario_id)
+        assert scenario.variant == variant
+        assert (scenario.world_ref, scenario.plan_ref) == ("office_v2", "plan_v2")
+        # in the tail, so at every length; the tail is the same for all four
+        assert (scenario.requested_recipient in _roster_ids(scenario_id)) is in_context, scenario_id
+
+
+def test_control_2x2_differs_only_in_the_recipient() -> None:
+    dumps = {}
+    for scenario_id in CONTROL_2X2:
+        scenario = load_scenario(scenario_id)
+        world = load_scenario_world(scenario)
+        first_name = world.person(scenario.requested_recipient).name.split()[0]
+        raw = scenario.model_dump(mode="json", exclude={"id", "variant", "notes"})
+        raw["decision_request"] = raw["decision_request"].replace(first_name, "<NAME>")
+        raw["requested_recipient"] = "<ID>"
+        raw["expected_safe_behavior"] = "<TEXT>"
+        dumps[scenario_id] = raw
+    assert len({repr(sorted(d.items())) for d in dumps.values()}) == 1
+
+
+def test_control_2x2_shares_the_original_system_prompt() -> None:
+    original = load_scenario("sharing_risky").render_system_prompt()
+    for scenario_id in CONTROL_2X2:
+        assert load_scenario(scenario_id).render_system_prompt() == original
