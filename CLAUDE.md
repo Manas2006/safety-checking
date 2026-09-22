@@ -8,8 +8,9 @@ decisions and their reasons.
 ## Two copies
 
 The repo lives in two places. A **local copy** (a Mac) is where the infrastructure is built:
-code, configs, tests, analysis. The **LS6 copy** is where jobs are submitted. Manas moves code
-between them with git himself; never push or pull.
+code, configs, tests, analysis. The **LS6 copy** is where jobs are submitted. Code moves
+between them through GitHub (`origin`), and pulling and pushing are allowed: pull before starting
+work, and push once a commit is ready (see the git rule below).
 
 On the local copy the login-node limits below (memory cap, `$WORK`, the `UV_CONCURRENT_*` and
 `RAYON_NUM_THREADS` prefixes) do not apply, and `./outputs` is a plain git-ignored folder rather
@@ -44,8 +45,9 @@ Written for the LS6 copy; "Two copies" above says what differs locally.
 - Do not touch anything outside this folder and that outputs folder. **Never** touch
   `/work/10757/manasp123/_archive_pre_2026-09`.
 - **No paid API calls** without explicit instruction. Tests must never hit the network.
-- Do not push to any remote. Commit locally, small commits, tests and ruff passing before each
-  commit.
+- Small commits, tests and ruff passing before each commit. Push to `origin` only after
+  `git pull --rebase` and a passing test run on the result. Never force-push or rewrite pushed
+  history, and never push to any other remote.
 - If something in the environment blocks you, stop and ask. Do not work around it by installing
   system packages.
 - **Never import torch, vllm or transformers on the login node**, and never add them to this
