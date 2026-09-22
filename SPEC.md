@@ -797,6 +797,9 @@ Not guesses to be made silently; these are for you to settle before or during th
     family unless one arm fixes it across models.
 17. **gpt-oss reasoning effort.** `low` is the nearest thing to thinking off. Is that the fair
     comparison, or is `medium` (the model's default) the one a deployed agent would run?
-18. **What gpt-oss is shown.** vLLM renders Responses-API requests with openai_harmony. Whether
-    chat completions, which we use, go through the same rendering as `/tokenize` (which
-    `sc render` asks) is not verified for this family.
+18. **What gpt-oss is shown.** Partly answered by job 3461090: `/tokenize` renders our
+    messages in harmony, every call and result present and in order, and each tool result is
+    wrapped as a JSON string literal of itself (`{"ok":true}` arrives as `"{\"ok\":true}"`,
+    backslashes and all). That is what the model reads, one more layer of quoting than the
+    other families see; the render check now accepts and counts that form. Still unverified:
+    that a chat-completions request is rendered identically to `/tokenize`.

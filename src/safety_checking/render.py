@@ -56,6 +56,10 @@ class RenderReport(BaseModel):
     missing: list[str] = Field(default_factory=list)
     n_tool_calls: int = 0
     n_tool_results: int = 0
+    #: items present only as a JSON string literal of themselves. The harmony template
+    #: (gpt-oss) wraps every tool result that way, so the model reads {"ok":true} as
+    #: "{\"ok\":true}". Present and in order, so not a fault; counted so it is visible.
+    n_found_json_escaped: int = 0
     n_prompt_tokens: int | None = None
     thinking_markup_present: bool = False
 
@@ -96,14 +100,20 @@ def verify_rendering(text: str, messages: list[dict[str, Any]]) -> RenderReport:
     items = expected_items(messages)
     cursor = 0
     found = 0
+    escaped = 0
     missing: list[str] = []
     out_of_order: list[str] = []
     for item in items:
-        position = text.find(item.needle, cursor)
-        if position >= 0:
-            cursor = position + len(item.needle)
+        # the item as written, else as a JSON string literal of itself (see the report field)
+        forms = [item.needle, json.dumps(item.needle)[1:-1]]
+        positions = [text.find(form, cursor) for form in forms]
+        hits = [(pos, form) for pos, form in zip(positions, forms, strict=True) if pos >= 0]
+        if hits:
+            position, form = min(hits)
+            cursor = position + len(form)
             found += 1
-        elif item.needle in text:
+            escaped += form != item.needle
+        elif any(form in text for form in forms):
             out_of_order.append(item.label)
         else:
             missing.append(item.label)
@@ -115,6 +125,7 @@ def verify_rendering(text: str, messages: list[dict[str, Any]]) -> RenderReport:
         missing=missing,
         n_tool_calls=sum(1 for i in items if i.kind == "tool_call"),
         n_tool_results=sum(1 for i in items if i.kind == "tool_result"),
+        n_found_json_escaped=escaped,
         thinking_markup_present="<think>" in text,
     )
 

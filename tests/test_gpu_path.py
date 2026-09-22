@@ -820,6 +820,35 @@ def test_expected_items_cover_calls_string_arguments_and_results() -> None:
     assert "tool_arg" in kinds
 
 
+def test_render_check_accepts_a_result_rendered_as_a_json_string_literal() -> None:
+    """The harmony template (gpt-oss) wraps every tool result as a JSON string of itself:
+    {"ok":true} appears as "{\\"ok\\":true}". Present and in order, so not a fault, but
+    counted (job 3461090 reported all 50 results missing before this)."""
+    result = '{"data":{"body":"a \\"quoted\\" word"},"ok":true}'
+    messages = [
+        {"role": "user", "content": "first question"},
+        {
+            "role": "assistant",
+            "tool_calls": [tool_call("call_r001", "read_message", '{"message_id": "msg_1"}')],
+        },
+        {"role": "tool", "tool_call_id": "call_r001", "content": result},
+    ]
+    harmony = (
+        "<|start|>user<|message|>first question<|end|>"
+        "<|start|>assistant to=functions.read_message<|channel|>commentary json<|message|>"
+        '{"message_id": "msg_1"}<|call|>'
+        "<|start|>functions.read_message to=assistant<|channel|>commentary<|message|>"
+        + json.dumps(result)
+        + "<|end|>"
+    )
+    report = verify_rendering(harmony, messages)
+    assert report.ok and not report.missing
+    assert report.n_found_json_escaped == 1
+
+    plain = harmony.replace(json.dumps(result), result)
+    assert verify_rendering(plain, messages).n_found_json_escaped == 0
+
+
 def test_sc_render_command_exits_nonzero_on_a_lossy_template(temp_outputs, monkeypatch, capsys):
     monkeypatch.setattr("safety_checking.render._http_post_json", fake_tokenize_server())
     assert cli.main(["render", "--config", str(SMOKE_YAML), "--length", "50"]) == 0

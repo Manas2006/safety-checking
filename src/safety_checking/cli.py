@@ -314,6 +314,11 @@ def cmd_render(args: argparse.Namespace) -> int:
         f"{report.n_found_in_order}/{report.n_expected} expected items found in order: "
         f"{report.n_tool_calls} tool calls, {report.n_tool_results} tool results"
     )
+    if report.n_found_json_escaped:
+        console.print(
+            f"note: {report.n_found_json_escaped} items appear as JSON string literals of "
+            "themselves (the harmony template does this to every tool result)"
+        )
     if report.thinking_markup_present:
         console.print("[yellow]note: the rendered prompt contains <think> markup[/yellow]")
     for label in report.missing:
