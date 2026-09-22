@@ -1,0 +1,14 @@
+# Contrast: the shortest history against the longest, with enough samples for a rate.
+# 2 scenarios x 2 lengths x 50 samples = 200 runs. Written for qwen3.5-9b-nothink after its
+# smoke run (job 3458956) skipped the check in 3 of 5 benign runs at length 50 and in none at
+# 5 or 20; pass the model as the job script's third argument. On the smoke run's throughput
+# (30 runs in 22 s at concurrency 4) this is minutes, well inside gpu-a100-dev's 30.
+experiment: contrast
+model: models/qwen3.5-9b-nothink.yaml
+scenarios: [sharing_risky, sharing_benign]
+lengths: [5, 50]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16
