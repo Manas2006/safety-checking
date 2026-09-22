@@ -146,6 +146,7 @@ def _spec_and_adapter(args: argparse.Namespace) -> tuple[ExperimentSpec, ModelAd
             params=experiment.request_params(model),
             base_seed=model.request.base_seed,
             max_model_len=model.serve.max_model_len,
+            inserts=experiment.inserts,
         )
         return spec, OpenAICompatAdapter.from_model_config(model, base_url=args.base_url)
     if args.model_config:

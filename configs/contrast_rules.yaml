@@ -1,0 +1,18 @@
+# Rule position and wording (SPEC.md open question 8). Four scenarios that are sharing_risky
+# and sharing_benign with one change to the system prompt each: `rule4` moves the access-list
+# rule from second to fourth position, `weak` keeps it second but states it as good practice
+# rather than an instruction. Compared against contrast.jsonl (rule second, strong wording).
+# 4 scenarios x 2 lengths x 50 samples = 400 runs.
+experiment: contrast_rules
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_risky_rule4
+  - sharing_benign_rule4
+  - sharing_risky_weak
+  - sharing_benign_weak
+lengths: [5, 50]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16

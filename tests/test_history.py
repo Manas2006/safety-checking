@@ -259,10 +259,67 @@ PINNED_PREFIX_HASHES_V2 = {
 }
 
 
+# The rule position / wording variants (plan, the original tail; SPEC.md open question 8).
+PINNED_PREFIX_HASHES_RULES = {
+    "sharing_risky_rule4": {
+        "none": {
+            5: "d30c008aaa4d06460f46addbde2ed7e4d5dc14363826d297031416b618a216d9",
+            20: "705e2a00dcb283345e199c8f160cfbba4334f29bc43319b537f38d74555172ed",
+            50: "8fb5036d332756ce0dcbe85b63679c4e783480d542dbb24306891591aa74fbbc",
+        },
+        "performed": {
+            5: "4b56641ca05b21b82ea77daeaa0f173f12ff2833763d3dbd2ffe34197532bd33",
+            20: "5172f79cacb2bde7021a982b1f9dfd3aac5c12232300c6e1e9d01b83c41ffd65",
+            50: "d49e22b69bddd8354ded4149fbe9a1e96d2e7932cc391f57186120caede0de3c",
+        },
+    },
+    "sharing_benign_rule4": {
+        "none": {
+            5: "3cb7eacb2c4829c227b5f28e32ec0dfed05f285fcb5c61d9e6075b067966ef76",
+            20: "d78fc2d90bab78416e143aadf6cd8eb278f20b886514b26b16d800cdc065328e",
+            50: "1640a0b2f7aab642de079e9fc2e4abfc76c3897718c78097e9f071138687fe04",
+        },
+        "performed": {
+            5: "6811cf259e0e5782ce5d4e52f7d588e42c340fc026e539eae4749d3458283617",
+            20: "0477ee3da7c18c452224efe94bb83b96cb98f7e29fa18b5a10c2fc15964ae91d",
+            50: "cc4e3030abc552e20b106264b90e7009a1e3ecc0d45c770ceb3c27f4983dd835",
+        },
+    },
+    "sharing_risky_weak": {
+        "none": {
+            5: "24d7c10141c8220cd29db605c2233814245e7df199741b454143d357f5fa53b3",
+            20: "e71c148b4a5ba780cec47991baccb9de63f9e0f010cbd93c1192a2a8eefd8895",
+            50: "6edde6d0a34990ddc619e560acf28569111b3c639c13cdb29786fb63f984623c",
+        },
+        "performed": {
+            5: "5de570776bf20f4bf7f7d6affd3dd362402c96c6ad217db64a232e9d4f16e701",
+            20: "f2ebf8f3cad10af466b5d931e4f86ee68f8bc2f0d81978c44b5c9f62e9d1bb4c",
+            50: "04bbd1d0972bbf6e2a4f3b49f63d69f7c76525aa41d605caba59a62688694145",
+        },
+    },
+    "sharing_benign_weak": {
+        "none": {
+            5: "3154697168cb1fa375f0ceda9765d1a82f3ebf480ba1a2952fef16efa42044ee",
+            20: "c05629680bd34befcdb7c7903b59c659ad193693fa82a7e7834c84a44b390546",
+            50: "4c33bced6085704459ea25e3bea768be69e03a189bbd5b029957f5f12e02ab68",
+        },
+        "performed": {
+            5: "0c1300bab6fd5b6740a614dc8abb73a06020994c29e3c575c75907224abe0d79",
+            20: "5034ba815c3d7f8cb3ca9ec31b639d1cb2a696e2d4eda468ee793a694e52dd50",
+            50: "bf7c79334503642f87c519a0c15431d1db857efe78f887702cfa183af69cecb6",
+        },
+    },
+}
+
+
 @pytest.mark.parametrize(
     ("pinned", "tail_hash"),
-    [(PINNED_PREFIX_HASHES, PINNED_TAIL_HASH), (PINNED_PREFIX_HASHES_V2, PINNED_TAIL_HASH_V2)],
-    ids=["plan", "plan_v2"],
+    [
+        (PINNED_PREFIX_HASHES, PINNED_TAIL_HASH),
+        (PINNED_PREFIX_HASHES_V2, PINNED_TAIL_HASH_V2),
+        (PINNED_PREFIX_HASHES_RULES, PINNED_TAIL_HASH),
+    ],
+    ids=["plan", "plan_v2", "rules"],
 )
 def test_prefix_hashes_are_pinned(pinned, tail_hash) -> None:
     built: dict[str, dict[str, dict[int, str]]] = {}
@@ -324,6 +381,50 @@ def test_inserts_hook_places_messages_before_a_call(scenario, world) -> None:
     index = prefix.messages.index(reminder)
     following = prefix.messages[index + 1]
     assert following["tool_calls"][0]["id"] == "call_r003"
+
+
+# The reminder arm (configs/contrast_reminder.yaml): one user message inserted before call
+# r005 at every length, so the tail (which now contains it) is still identical across lengths.
+PINNED_TAIL_HASH_REMINDER = "429dea631414"
+PINNED_PREFIX_HASHES_REMINDER = {
+    "sharing_risky": {
+        5: "50461f2f37081b86bba22e46ca1275504bda57fa27c0a48b46deca276724c2b2",
+        20: "7046590e396ebf2d553080be45b9f52e7369e403898fc61d049413a707b9f6e6",
+        50: "ddc620117276daeefb5c0ba09a59698491e5ddddc4c84be28f03923262ed8803",
+    },
+    "sharing_benign": {
+        5: "877dc4a6a7a50d83072120ca1c70304925b1f312deeba33a2e0ac13486525192",
+        20: "fe7938431a4ce42f2151ea70ba30434e32b65f024f00a1cbaa00f6595a9ee518",
+        50: "e282283de002d60ece9b7e8a8fb46c4b1a8acb53953375276229a5845be35437",
+    },
+}
+
+
+def test_reminder_arm_prefixes_are_pinned_and_nested() -> None:
+    from safety_checking.config import load_experiment_config
+    from safety_checking.runner.experiment import ExperimentSpec, build_cells
+
+    experiment, _ = load_experiment_config("configs/contrast_reminder.yaml")
+    assert experiment.inserts and experiment.arm != "baseline"
+    spec = ExperimentSpec(
+        experiment=experiment.experiment,
+        scenarios=experiment.scenarios,
+        lengths=experiment.lengths,
+        inserts=experiment.inserts,
+    )
+    cells = build_cells(spec, save=False)
+    built: dict[str, dict[int, str]] = {}
+    for cell in cells:
+        prefix = cell.prefix
+        assert prefix.metadata.tail_hash.startswith(PINNED_TAIL_HASH_REMINDER)
+        reminder = experiment.inserts[5][0]
+        index = prefix.messages.index(reminder)
+        assert prefix.messages[index + 1]["tool_calls"][0]["id"] == "call_r005"
+        built.setdefault(cell.scenario.id, {})[prefix.length] = prefix.prefix_hash
+    assert built == PINNED_PREFIX_HASHES_REMINDER
+    for scenario_id in experiment.scenarios:
+        prefixes = [c.prefix for c in cells if c.scenario.id == scenario_id]
+        assert check_nesting(prefixes).suffix_ok
 
 
 # -- the validator itself ----------------------------------------------------

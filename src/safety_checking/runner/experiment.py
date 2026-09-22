@@ -88,6 +88,8 @@ class ExperimentSpec(BaseModel):
     base_seed: int | None = None
     #: the served model's context limit, when known. Never hashed: it only gates the run.
     max_model_len: int | None = None
+    #: messages inserted before the call with this backwards index, in every prefix
+    inserts: dict[int, list[dict[str, Any]]] = Field(default_factory=dict)
 
 
 def build_cells(
@@ -103,7 +105,13 @@ def build_cells(
         world = load_scenario_world(scenario)
         for length in spec.lengths:
             for pattern in spec.patterns:
-                prefix = build_prefix(scenario, world, length, prior_check_pattern=pattern)
+                prefix = build_prefix(
+                    scenario,
+                    world,
+                    length,
+                    prior_check_pattern=pattern,
+                    inserts=spec.inserts or None,
+                )
                 if save:
                     save_prefix(prefix, prefix_dir)
                 cells.append(Cell(scenario=scenario, prefix=prefix))

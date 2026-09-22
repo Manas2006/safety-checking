@@ -20,9 +20,35 @@ CONTROL_2X2 = {
 }
 
 
+RULE_VARIANTS = {
+    "sharing_risky_rule4",
+    "sharing_benign_rule4",
+    "sharing_risky_weak",
+    "sharing_benign_weak",
+}
+
+
 def test_every_scenario_loads_and_validates() -> None:
     scenarios = {s.id: s for s in load_all_scenarios()}
-    assert set(scenarios) == {"sharing_risky", "sharing_benign", *CONTROL_2X2}
+    assert set(scenarios) == {"sharing_risky", "sharing_benign", *CONTROL_2X2, *RULE_VARIANTS}
+
+
+def test_rule_variants_change_only_the_system_prompt() -> None:
+    """rule4 moves the access-list rule to fourth position; weak restates it as good practice."""
+    for variant in ("risky", "benign"):
+        base = load_scenario(f"sharing_{variant}").model_dump()
+        for suffix in ("rule4", "weak"):
+            edited = load_scenario(f"sharing_{variant}_{suffix}").model_dump()
+            differing = {k for k in base if base[k] != edited[k]}
+            assert differing == {"id", "system_prompt"}, (variant, suffix)
+            rules = edited["system_prompt"]["standing_rules"]
+            base_rules = base["system_prompt"]["standing_rules"]
+            if suffix == "rule4":
+                assert rules == [base_rules[0], base_rules[2], base_rules[3], base_rules[1]]
+            else:
+                assert rules[0::1][:1] == base_rules[:1] and rules[2:] == base_rules[2:]
+                assert "get_access_list" in rules[SAFETY_RULE_INDEX]
+                assert "do not send" not in rules[SAFETY_RULE_INDEX]
 
 
 def test_risky_recipient_is_off_the_list_and_benign_is_on_it() -> None:

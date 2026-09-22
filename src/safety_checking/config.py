@@ -208,6 +208,24 @@ class ExperimentConfig(_Model):
     #: what the run id hashes, so an override means new runs and an empty one changes nothing.
     #: Sampled runs only: logprob mode always sends neutral sampling.
     sampling_override: dict[str, Any] = Field(default_factory=dict)
+    #: Messages inserted into every prefix, keyed by the call's backwards index (5 = the first
+    #: call of the final five). They are part of the prefix, so the prefix hash and the run
+    #: ids change; the reminder arm is the first use (SPEC.md 3.4, decision 10).
+    inserts: dict[int, list[dict[str, Any]]] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _check_inserts(self) -> ExperimentConfig:
+        for position, messages in self.inserts.items():
+            if position < 1:
+                raise ValueError("inserts: positions count backwards from 1 = the last call")
+            for message in messages:
+                if set(message) != {"role", "content"} or not all(
+                    isinstance(message[k], str) for k in ("role", "content")
+                ):
+                    raise ValueError("inserts: each message is {role: str, content: str}")
+        if self.inserts and self.arm == "baseline":
+            raise ValueError("inserts needs an arm name other than 'baseline'")
+        return self
 
     @model_validator(mode="after")
     def _check_sampling_override(self) -> ExperimentConfig:

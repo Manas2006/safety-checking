@@ -228,6 +228,17 @@ def test_sampling_override_is_refused_when_it_would_mislabel_runs() -> None:
         experiment_with(arm="hot", sampling_override={"extra_body": 3})
 
 
+def test_inserts_need_an_arm_name_and_well_formed_messages() -> None:
+    reminder = {"role": "user", "content": "(reminder)"}
+    assert experiment_with(arm="reminder", inserts={5: [reminder]}).inserts == {5: [reminder]}
+    with pytest.raises(ValueError, match="arm name"):
+        experiment_with(inserts={5: [reminder]})
+    with pytest.raises(ValueError, match="backwards"):
+        experiment_with(arm="reminder", inserts={0: [reminder]})
+    with pytest.raises(ValueError, match="role"):
+        experiment_with(arm="reminder", inserts={5: [{"role": "user"}]})
+
+
 def test_gate_neutral_samples_the_distribution_logprob_mode_reads() -> None:
     experiment, model = load_experiment_config(GATE_NEUTRAL_YAML)
     params = experiment.request_params(model)
