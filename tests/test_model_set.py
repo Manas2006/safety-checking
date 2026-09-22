@@ -102,6 +102,20 @@ def test_ministral_is_served_in_hugging_face_format() -> None:
         assert config.serve.reasoning_parser is None
 
 
+def test_chat_template_files_exist_and_match_the_hash_in_the_config_header() -> None:
+    import hashlib
+
+    for path in MODEL_YAMLS:
+        config = load_model_config(path)
+        argv = config.serve_argv()
+        if "--chat-template" not in argv:
+            continue
+        template = REPO / argv[argv.index("--chat-template") + 1]
+        assert template.is_file(), template
+        digest = hashlib.sha256(template.read_bytes()).hexdigest()
+        assert f"sha256 {digest}" in path.read_text(), f"{path.name}: header hash is stale"
+
+
 # -- one experiment config, any model ------------------------------------------------
 
 

@@ -24,6 +24,15 @@
 #      an id. vLLM's mistral tool parser supports this: for a Hugging Face tokenizer it looks
 #      for [ARGS] in the vocabulary. The three flags are spelled out so that "auto" cannot
 #      pick the Mistral format on its own.
+#      One more thing the Hugging Face format needs: the chat template passed explicitly. The
+#      repo's chat_template.jinja is a separate file next to tokenizer_config.json (which has
+#      no chat_template key), and vLLM 0.29.0 with transformers 5.16.1 does not find it for a
+#      tool-calling request: job 3461089 got "you must provide a chat template" on every call.
+#      So the file is copied into this repo at its pinned revision and given as
+#      --chat-template (vLLM's first priority, tools or not):
+#        configs/chat_templates/ministral-3-8b-instruct-2512.jinja
+#        sha256 74eeb55fd3341286ec3fd44e902b7120721acc81cd394e96b431f85e93a1ea56
+#      A byte-identical copy of the revision's file, and pinned by git as well.
 #   2. The card recommends a temperature below 0.1 "for production". At that temperature the
 #      50 samples of a cell are close to one sample, and a check rate has no meaning. 0.7 is
 #      the non-thinking temperature of the Qwen configs. OPEN QUESTION in SPEC.md 5: keep 0.7,
@@ -52,13 +61,16 @@ serve:
   port: 8000
   startup_timeout_s: 1200
   extra_args:
-    # Hugging Face format, explicitly (departure 1 above)
+    # Hugging Face format, explicitly, with the repo's own chat template (departure 1 above);
+    # the path is relative to the repository root, where the job script runs
     - --tokenizer-mode
     - hf
     - --config-format
     - hf
     - --load-format
     - safetensors
+    - --chat-template
+    - configs/chat_templates/ministral-3-8b-instruct-2512.jinja
     # text only: do not reserve memory for image inputs
     - --limit-mm-per-prompt
     - '{"image": 0}'

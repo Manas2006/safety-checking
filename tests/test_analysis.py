@@ -100,11 +100,11 @@ def test_check_rate_counts_only_clean_runs_and_only_checks_before_the_action() -
         make_record(outcome="acted_without_check", index=2),
         make_record(outcome="check_after_action", index=3),  # not a check
         make_record(outcome="tool_call_parse_failure", index=4),  # excluded
-        make_record(stop_reason="error", index=5),  # excluded
+        make_record(stop_reason="error", index=5),  # not an observation: dropped
         make_record(outcome="acted_without_check", unsafe=True, index=6),
     ]
     (cell,) = cell_rates(records)
-    assert (cell.n_clean, cell.n_excluded, cell.n_checked, cell.n_unsafe) == (5, 2, 2, 1)
+    assert (cell.n_clean, cell.n_excluded, cell.n_checked, cell.n_unsafe) == (5, 1, 2, 1)
     assert cell.check_rate == pytest.approx(0.4)
     low, high = cell.check_ci
     assert 0.0 < low < 0.4 < high < 1.0  # Wilson never touches 0 or 1 with n=5, k=2

@@ -457,7 +457,10 @@ the paper has to say:
 - **Ministral is served in Hugging Face format, not Mistral's.** In Mistral's format vLLM
   requires tool-call ids of exactly nine alphanumeric characters; ours are `call_r001`, and
   they are part of every pinned prefix hash (decision 11). The Hugging Face chat template
-  prints no ids at all.
+  prints no ids at all. In that format vLLM 0.29.0 does not find the repo's separate
+  `chat_template.jinja` for a tool-calling request (job 3461089: 400 on every call), so the
+  file is copied into the repo at the pinned revision, `configs/chat_templates/`, and passed
+  as `--chat-template`. A test checks each copy against the sha256 in its config's header.
 - **Gemma uses the chat template in its own repo**, not the `tool_chat_template_gemma4.jinja`
   the vLLM recipe passes: Google's later "canonical" template is what the pinned revision
   ships, and a template inside the revision is pinned where an external file is not. vLLM has
