@@ -70,6 +70,12 @@ serve:
     - hf
     - --load-format
     - safetensors
+    # A tokenizer directory holding only the Hugging Face tokenizer files (no tekken.json):
+    # transformers 5.16 picks MistralCommonBackend for any repo containing tekken.json, and
+    # that backend has no chat-template support, so jobs 3461089 and 3461125 answered every
+    # chat request with 501. scripts/setup_ministral_tokenizer.sh builds the directory.
+    - --tokenizer
+    - outputs/tokenizers/ministral-3-14b
     - --chat-template
     - configs/chat_templates/ministral-3-14b-instruct-2512.jinja
     # text only: do not reserve memory for image inputs

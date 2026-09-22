@@ -1,0 +1,63 @@
+# Qwen/Qwen3.5-27B, BF16, non-thinking mode, served by vLLM on the TWO A100 40 GB of one
+# gpu-a100 node. The same generation as qwen3.5-9b-nothink, so the 9B-vs-27B contrast within
+# Qwen3.5 is a scale contrast alone; qwen3.8-27b-nothink is a generation newer.
+#
+# Checked against the Hub API on 2026-09-21 (revision fc05daec, not gated, 11 shards; the card's
+# serving recipe and sampling are assumed to match the 9B's and should be confirmed):
+#   https://huggingface.co/Qwen/Qwen3.5-27B
+#
+# Everything in this file is hashed into the adapter name, and so into every run id.
+
+id: qwen3.5-27b-nothink
+hf_repo: Qwen/Qwen3.5-27B
+revision: fc05daec18b0a78c049392ed2e771dde82bdf654
+served_model_name: qwen3.5-27b
+
+serve:
+  vllm_version: "0.29.0"
+  tensor_parallel_size: 2
+  # Sized like qwen3.8-27b-nothink: 27B of BF16 weights across two 40 GB A100s leaves the KV
+  # cache room for 16384, enough for a 9k prompt plus an 8-step decision.
+  max_model_len: 16384
+  dtype: bfloat16
+  gpu_memory_utilization: 0.90
+  max_num_seqs: 16
+  seed: 0
+  tool_call_parser: qwen3_coder
+  reasoning_parser: qwen3
+  enable_prefix_caching: true
+  host: 127.0.0.1
+  port: 8000
+  startup_timeout_s: 1200
+  extra_args:
+    # text only: do not reserve memory for image or video inputs
+    - --limit-mm-per-prompt
+    - '{"image": 0, "video": 0}'
+  env:
+    # LS6 compute nodes have no nvcc, and FlashInfer's sampler JIT-compiles at warm-up
+    # (job 3458103). See qwen3.8-27b-nothink.yaml.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+
+request:
+  sampling:
+    temperature: 0.7
+    top_p: 0.8
+    presence_penalty: 1.5
+    max_tokens: 1024
+  extra_body:
+    top_k: 20
+    min_p: 0.0
+    repetition_penalty: 1.0
+    chat_template_kwargs:
+      enable_thinking: false
+  base_seed: 0
+
+# Logprob mode (SPEC.md 3.10): the same wire format as the 9B, so the same opener. Not part of
+# the config hash.
+logprob:
+  call_opener: "<tool_call>\n<function="
+  name_terminator: ">"
+
+notes: >-
+  The 9B's same-generation partner, for a scale contrast that does not cross generations.
+  Weights not yet downloaded (scripts/download_weights.sh); not yet served.

@@ -44,9 +44,24 @@ REASONING_VARIANTS = {
 }
 
 
+#: models beside the eight that share a family's recipe: the 9B's same-generation partner.
+SCALE_VARIANTS = {"qwen3.5-27b-nothink": "qwen3.5-9b-nothink"}
+
+
 def test_the_model_set_is_four_families_of_two() -> None:
     headline = sorted(m for pair in FAMILIES.values() for m in pair)
-    assert sorted(model_ids()) == sorted([*headline, *REASONING_VARIANTS])
+    assert sorted(model_ids()) == sorted([*headline, *REASONING_VARIANTS, *SCALE_VARIANTS])
+
+
+def test_scale_variants_share_their_partners_recipe() -> None:
+    for variant, partner_id in SCALE_VARIANTS.items():
+        variant_config = load_model_config(MODELS_DIR / f"{variant}.yaml")
+        partner = load_model_config(MODELS_DIR / f"{partner_id}.yaml")
+        assert variant_config.hf_repo != partner.hf_repo
+        assert variant_config.request.sampling == partner.request.sampling
+        assert variant_config.request.extra_body == partner.request.extra_body
+        assert variant_config.serve.tool_call_parser == partner.serve.tool_call_parser
+        assert variant_config.logprob == partner.logprob
 
 
 def test_reasoning_variants_share_their_base_models_weights() -> None:

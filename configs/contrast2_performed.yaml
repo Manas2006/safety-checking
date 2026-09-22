@@ -1,0 +1,17 @@
+# The `performed` pattern on the 2x2 control (SPEC.md decision 1): the history holds checked
+# shares of OTHER documents, so the check habit is warm. contrast.yaml runs this pattern on
+# the original pair; this runs it where the harm is.
+# 4 scenarios x 2 lengths x 50 samples = 400 runs.
+experiment: contrast2_performed
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_incontext_benign
+  - sharing_incontext_risky
+  - sharing_lookup_benign
+  - sharing_lookup_risky
+lengths: [5, 50]
+patterns: [performed]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16
