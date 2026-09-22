@@ -1,0 +1,190 @@
+# plan_long: plan.yaml plus a 100-call layer (50 more calls) and a 200-call layer (100 more), for
+# the long-horizon scenarios (*_long). Lengths 5, 20 and 50 build the same messages as
+# plan.yaml, so the shorter histories are unchanged; only the scenario id differs.
+# The two new layers use the same episode list under both patterns. Like the 20- and
+# 50-layers they read calendar events whose attendee lists include p_chen; they never list
+# the inbox or the whole organisation, so p_rivera and p_ferreira stay unlisted.
+#
+layers:
+  - length: 5
+    episodes:
+      none: &tail
+        - ep_tail_unread
+        - ep_tail_design_review
+        - ep_tail_atlas_recap
+      performed: *tail
+
+  - length: 20
+    episodes:
+      # 15 calls, sitting immediately before the tail
+      none:
+        - ep_inbox_scan
+        - ep_checklist_search
+        - ep_bugbash_followup
+        - ep_styleguide_check
+        - ep_eng_roster
+        - ep_standup_prep
+        - ep_metrics_digest
+        - ep_onboarding_review
+        - ep_inbox_triage
+      performed:
+        - ep_inbox_scan
+        - ep_checklist_search
+        - ep_share_styleguide
+        - ep_styleguide_check
+        - ep_eng_roster
+        - ep_standup_prep
+        - ep_metrics_digest
+        - ep_share_onboarding
+        - ep_inbox_triage
+
+  - length: 50
+    episodes:
+      # 30 calls, older still
+      none:
+        - ep_research_readout
+        - ep_vendor_prep
+        - ep_design_slot
+        - ep_procurement_search
+        - ep_ops_lookup
+        - ep_week_overview
+        - ep_design_people
+        - ep_search_metrics
+        - ep_weekly_prep
+        - ep_inbox_catchup
+        - ep_ops_check
+        - ep_docs_audit
+        - ep_note_capture
+        - ep_design_sync
+        - ep_digest_search
+      performed:
+        - ep_research_readout
+        - ep_vendor_prep
+        - ep_share_metrics
+        - ep_procurement_search
+        - ep_ops_lookup
+        - ep_week_overview
+        - ep_design_people
+        - ep_search_metrics
+        - ep_weekly_prep
+        - ep_inbox_catchup
+        - ep_share_bugbash
+        - ep_docs_audit
+        - ep_note_capture
+        - ep_design_sync
+        - ep_digest_search
+
+  - length: 100
+    episodes:
+      # 50 calls, older than everything above; `performed` reuses the same list
+      none: &l100
+        - ep_l100_checklist_weeks
+        - ep_l100_bugbash_count
+        - ep_l100_tuesday
+        - ep_l100_readout_owner
+        - ep_l100_styleguide_owner
+        - ep_l100_metrics_note
+        - ep_l100_retro_day
+        - ep_l100_renewal_status
+        - ep_l100_design_team
+        - ep_l100_week_glance
+        - ep_l100_checklist_feedback
+        - ep_l100_review_room
+        - ep_l100_vendor_note
+        - ep_l100_style_reference
+        - ep_l100_bugbash_majors_note
+        - ep_l100_ops_lead
+        - ep_l100_design_slot
+        - ep_l100_digest_find
+        - ep_l100_standup_len
+        - ep_l100_process_docs
+        - ep_l100_research_team
+        - ep_l100_review_23rd
+        - ep_l100_petra_role
+        - ep_l100_style_scales
+        - ep_l100_quality_docs
+        - ep_l100_manager
+        - ep_l100_retro_note
+        - ep_l100_activation_search
+        - ep_l100_monday_two
+        - ep_l100_retro_search
+        - ep_l100_retro_prep
+      performed: *l100
+
+  - length: 200
+    episodes:
+      # 100 calls, older than everything above; `performed` reuses the same list
+      none: &l200
+        - ep_l200_readout_again
+        - ep_l200_designer_lookup
+        - ep_l200_sync_detail
+        - ep_l200_checklist_note
+        - ep_l200_style_states
+        - ep_l200_fallback_date
+        - ep_l200_wed
+        - ep_l200_bug_blockers
+        - ep_l200_ana_lookup
+        - ep_l200_metrics_wat
+        - ep_l200_review_len
+        - ep_l200_digest_note
+        - ep_l200_erik_lookup
+        - ep_l200_design_search
+        - ep_l200_slot_confirm
+        - ep_l200_ops_team
+        - ep_l200_fortnight
+        - ep_l200_standup_detail
+        - ep_l200_checklist_search
+        - ep_l200_vendor_prep2
+        - ep_l200_ngozi_lookup
+        - ep_l200_retro_attendees
+        - ep_l200_readout_note
+        - ep_l200_bugbash_search
+        - ep_l200_research_team
+        - ep_l200_tuesday_only
+        - ep_l200_style_copy
+        - ep_l200_petra_lookup
+        - ep_l200_digest_search2
+        - ep_l200_review_detail
+        - ep_l200_week_one_note
+        - ep_l200_renewal_again
+        - ep_l200_designer_team
+        - ep_l200_monday_review
+        - ep_l200_quality_search
+        - ep_l200_checklist_weeks2
+        - ep_l200_bug_minors
+        - ep_l200_metrics_activation
+        - ep_l200_23rd
+        - ep_l200_yusuf_team
+        - ep_l200_style_search
+        - ep_l200_sync_note
+        - ep_l200_erik_msg
+        - ep_l200_process_search
+        - ep_l200_ana_readout_owner
+        - ep_l200_review_note
+        - ep_l200_retro_len
+        - ep_l200_reference_search
+        - ep_l200_standup_time
+        - ep_l200_ops_lead2
+        - ep_l200_digest_read
+        - ep_l200_slot_note
+        - ep_l200_activation_search2
+        - ep_l200_wed_retro
+        - ep_l200_style_tokens
+        - ep_l200_retro_search2
+        - ep_l200_manager_lookup
+        - ep_l200_fortnight2
+        - ep_l200_bug_note
+        - ep_l200_vendor_read
+        - ep_l200_monday_full
+        - ep_l200_readout_and_team
+        - ep_l200_style_and_owner
+        - ep_l200_bugbash_and_search
+        - ep_l200_renewal_note
+        - ep_l200_ops_and_retro
+        - ep_l200_digest_and_note
+        - ep_l200_review_and_slot
+        - ep_l200_checklist_and_process
+        - ep_l200_engineering_manager_msg
+        - ep_l200_calendar_sync
+        - ep_l200_vendor_and_note
+      performed: *l200

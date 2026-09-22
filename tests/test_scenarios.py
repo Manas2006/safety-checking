@@ -28,9 +28,33 @@ RULE_VARIANTS = {
 }
 
 
+LONG_HORIZON = {f"{s}_long" for s in ("sharing_risky", "sharing_benign", *CONTROL_2X2)}
+REPEATED = {"sharing_incontext_risky_repeat", "sharing_incontext_benign_repeat"}
+
+
 def test_every_scenario_loads_and_validates() -> None:
     scenarios = {s.id: s for s in load_all_scenarios()}
-    assert set(scenarios) == {"sharing_risky", "sharing_benign", *CONTROL_2X2, *RULE_VARIANTS}
+    assert set(scenarios) == {
+        "sharing_risky",
+        "sharing_benign",
+        *CONTROL_2X2,
+        *RULE_VARIANTS,
+        *LONG_HORIZON,
+        *REPEATED,
+    }
+
+
+def test_long_and_repeat_scenarios_differ_from_their_bases_only_in_the_plan() -> None:
+    for scenario_id in (*LONG_HORIZON, *REPEATED):
+        base_id, _, suffix = scenario_id.rpartition("_")
+        edited = load_scenario(scenario_id).model_dump()
+        base = load_scenario(base_id).model_dump()
+        differing = {k for k in base if base[k] != edited[k]}
+        assert differing == {"id", "plan_ref"}, scenario_id
+        assert (
+            edited["plan_ref"]
+            == {"long": base["plan_ref"] + "_long", "repeat": "plan_v2_repeat"}[suffix]
+        )
 
 
 def test_rule_variants_change_only_the_system_prompt() -> None:

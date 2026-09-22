@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from safety_checking.canonical import sha256_of
+from safety_checking.canonical import canonical_json, sha256_of
 from safety_checking.history import (
     PRIOR_CHECK_PATTERNS,
     Episode,
@@ -425,6 +425,168 @@ def test_reminder_arm_prefixes_are_pinned_and_nested() -> None:
     for scenario_id in experiment.scenarios:
         prefixes = [c.prefix for c in cells if c.scenario.id == scenario_id]
         assert check_nesting(prefixes).suffix_ok
+
+
+# The long-horizon scenarios (plan_long / plan_v2_long: lengths 5, 20, 50, 100, 200). Their
+# histories up to 50 are the bases' messages; the two new layers are pinned here.
+LONG_LENGTHS = [5, 20, 50, 100, 200]
+PINNED_PREFIX_HASHES_LONG = {
+    "sharing_risky_long": {
+        "none": {
+            5: "e02f2af187a631456c96ceb32f74c36addf4ae1591c4e6299c0aa531f001d6d5",
+            20: "5681e47dbc53100eee7869439b6a6f58499275cd1e26e3767f8067b54a07091c",
+            50: "c625be327da9951ac618e78c99ff3125893fd4274396ccd942c3ac9ee1aaf870",
+            100: "8461817791f9463cc38922c3dcc84ad703d395000f896e5a784c9959106c5304",
+            200: "799b5482bc2bb2344b54e3b51c909cbfdd071c4870bb285ea3b4428a3134d5b5",
+        },
+        "performed": {
+            5: "04bf8fd8ed497159a35a0bd03f9fe7f7a34d20c301004277ef3f0f8b3455d3aa",
+            20: "1eedb505f07eb717dbca938604719b5f31c6ea277c44b4e28b1b149cdac48b8c",
+            50: "72f0d8cf27f899c08fb71bb846861731853288fe2d603fc8a4016ec10b432c98",
+            100: "0681f761247ab240c55bbb4e40ffdb0c9a2a4489b0719a7b214e86b6661bc443",
+            200: "fe86004dbe54a6e709f36c77264edbce93945c51162ce42192c4107f7d47eea6",
+        },
+    },
+    "sharing_benign_long": {
+        "none": {
+            5: "9f56e40086ad10dae5bc97d290b9c65f65070d8b9b225c48463d00014dc415e1",
+            20: "dcfdac6ec02a23b26382ea218caca3ad9e07028ca34596dfacc90c845037be62",
+            50: "d7f8b02c7f8fee7a3b0ad6ee1f8f1a395a2255543faf521973d28654bde4f922",
+            100: "c0507f8763595ecd001b5c693c71a2abc8c3f270997e7fd1fa8999624d6fc2f1",
+            200: "c24d9d1c6b612fded6f862fa458e9b297af43d2bce1507d6dbea99d796a6782e",
+        },
+        "performed": {
+            5: "aabc7fb9949494c5bf85d8318d9fcc92ed94483941b67dc13157db4115acc7f2",
+            20: "b48d7fee22f3e96430698a966f2b12b644b4b306f996bc80b924e6735ab210a1",
+            50: "9df0bb86c980d00f9900b88a3c67111077a3cf73275fc93e8d253de49c58df6e",
+            100: "7e49e11f3774c5400ca34b87a4d2ac2fac10dc129ebc6e732b2fb8db2d308a76",
+            200: "8bff62fc9ff0773c058033cd20ac27108ce099abe3b0ebc6c4ec42f8b428da40",
+        },
+    },
+    "sharing_incontext_risky_long": {
+        "none": {
+            5: "ec3f010559ed104b3d2e1f4d4835885aba7d52dc13b1b9fbfee76c6447162d5e",
+            20: "fb4842b5dff0c5b7942d3bf8de48f215d34f3f183540a605d93e185c407d1e31",
+            50: "3c132990ca9359f91a021813492f1ebf88abee736e2557dbe173e361dcb10bb7",
+            100: "72bea8faaa30ffb73e489e07e98ac8c1adf44d6fc29ce6d4ec0468b16f942d42",
+            200: "6b5bc0ec7e9269b1bbd3b3d507404ae51012ab06be4ea0259beac3b2d2e1d26c",
+        },
+        "performed": {
+            5: "770c8b5c56b9d6bbe72106698897f4352277d4a35a9453d19b358e1bac18a6cc",
+            20: "cc95795c26eca013cf334ee4db74f27ee95035a0555efa09f2dfca0876560cbb",
+            50: "24525f1a1aaa9e3192314a3f0c33a24c4d740d0d063adb67367a662d5912ef71",
+            100: "96d465b1176695be5e4229214e3e4c34d531a7e0e4e5a3f74d33a90f916c56c5",
+            200: "4e261a200b0dada8dd4c06538d2501be766750a7d2faa92d2ace9853537fac19",
+        },
+    },
+    "sharing_incontext_benign_long": {
+        "none": {
+            5: "4870e034e70bb703d21f00fa55a16be785b9c75579b12585921a9fec55c740fb",
+            20: "6812c7a29fee0ddcf259c581671b773534af957ca220c369189be5f0401be3e8",
+            50: "aa15f3580bed392f38134ac131cca1539e611a883e1eac3b9151395ac96a5bc0",
+            100: "19e5e4206d7647111e53449fae2f8436e5c9959ac24d24e05b52ad14f6630a7d",
+            200: "f05bb49a31a82fa7971cc447f7aa4fd9d027c32cdc5c48cde0243f1f30c653e9",
+        },
+        "performed": {
+            5: "5b0331295d28429e2f935e5cd817a7b2b7dd29fb21c3bfe2378d1cf96473f613",
+            20: "8ca5746609db2d70d12200c155d339887aae7c106a4f8fb6b917f19a9ea2ba9f",
+            50: "ab2fe00840567bc71cf49d950f01b20c92a174de733d0036d3e0b9a80156daae",
+            100: "c88f50179e8f559dba1fa325d451c4b24110ada37c7808f1a340213c50cca544",
+            200: "656a22773b4309ac94f3282b5bd980d6952e05a3d070c7d62c2668d2eb9c620b",
+        },
+    },
+    "sharing_lookup_risky_long": {
+        "none": {
+            5: "5aa175dbfbba0856b5a2e79709f868f49dadf50a618781bf7e1a26ba32758ef1",
+            20: "a1bc5fd961fb899a434f0d867b0d26484cac50c74b6d29a7e5edc44aeb156389",
+            50: "744eebe777cc2fa1cc26c316613b3b7bb0d78e5eea10dcaea1ea4bf1a1552520",
+            100: "faec4c533b4f4813212af1b1afaac4fc45ade49046019aff4f3cd0542270eea2",
+            200: "b50a5b1ebb6454a6a13de5d830e2555e63fabd1431b8cd3a981120ae01aed15a",
+        },
+        "performed": {
+            5: "fe4152557435e1f9cdfc33eefb57055301f8e46cb83ff18060fa212c9a21422a",
+            20: "0a5083536a19fd36d310f2ba22e0f4294afb43af21ed5dd59e76bca550fc4004",
+            50: "a5e461fa5f3d93706ac3106d3efdfc2df49f5edc97525567d553d51075d8b755",
+            100: "502267c538d229d0f7facf2e3f441e36c50f84c13539c98e0e3f0c7bfbfb7709",
+            200: "5b540a13a8c7fc40583d748b6a3c9b26456ed2358c45750c56f25aba65156121",
+        },
+    },
+    "sharing_lookup_benign_long": {
+        "none": {
+            5: "e81487a3f1545e2ca7002be7ebf7a1ec4348fb476d0b005741689a874db7fa22",
+            20: "81483948b3c8808d5eae41d911887582082a7569f3cfe2f599ee421c5647e443",
+            50: "98aa555130fe73373d429fe9d7e086e4b3678754a84ff511a1a336fe95fd9165",
+            100: "19b713512fc2a0f0125ad34697ac1de75e50c442cf4f69187cadf90473f69056",
+            200: "fd7e035b2797e250c40fedbffdc596839b84e74c8c20dcc8226fee99309715ce",
+        },
+        "performed": {
+            5: "0c3ab4031d2c012634c1d7aef06fbc8322da190fdb06feb20b561a7f8da28098",
+            20: "e0ca2da09c0c1f239cda9a57f01815894feb9335513f09c72dec41ef24f49053",
+            50: "693b15459e2acc8c71bf2c9ab3775547722762923d4dbfde22289047eb4d8f10",
+            100: "0a5eeeb23dcc16750f8f7defd18b84a3b0281e5a0787d36cc9a1d2e608d6364c",
+            200: "b2d0ce921ef52142f47ef5666be66e774a1594ca6cbbe9e59d12edb1df9ba43a",
+        },
+    },
+}
+
+
+def test_long_horizon_prefixes_are_pinned_nested_and_extend_their_bases() -> None:
+    built: dict[str, dict[str, dict[int, str]]] = {}
+    for scenario_id in PINNED_PREFIX_HASHES_LONG:
+        scenario = load_scenario(scenario_id)
+        world = load_scenario_world(scenario)
+        base = load_scenario(scenario_id.removesuffix("_long"))
+        base_world = load_scenario_world(base)
+        for pattern in PRIOR_CHECK_PATTERNS:
+            prefixes = [build(scenario, world, length, pattern) for length in LONG_LENGTHS]
+            report = check_nesting(prefixes)
+            assert report.suffix_ok and len(set(report.tail_hashes.values())) == 1
+            for prefix in prefixes:
+                built.setdefault(scenario_id, {}).setdefault(pattern, {})[prefix.length] = (
+                    prefix.prefix_hash
+                )
+                if prefix.length in LENGTHS:  # the same bytes the base scenario builds
+                    same = build(base, base_world, prefix.length, pattern)
+                    assert prefix.messages == same.messages
+            # the new layers never list a recipient that the old layers never listed
+            new_part = prefixes[-1].messages[
+                : len(prefixes[-1].messages) - len(prefixes[2].messages)
+            ]
+            assert all(
+                pid not in canonical_json(m) for m in new_part for pid in ("p_rivera", "p_ferreira")
+            )
+    assert built == PINNED_PREFIX_HASHES_LONG
+
+
+# The repeated-episode control (plan_v2_repeat): the plan_v2 tail, filler one episode repeated.
+PINNED_PREFIX_HASHES_REPEAT = {
+    "sharing_incontext_risky_repeat": {
+        5: "be18fe06241cd102ae88efb0e91164a7c7fb3dbccc2b6e3a9370fda6d1a13c9d",
+        20: "d45a1f52d4fa2825d0baf7a5d7ccca6016a6ffb98014e157e93cea397dd5c9fd",
+        50: "fa3317f04ca40a99d21dc13e2f5234d7829eec03511f5348ad99e3f34fe43aeb",
+    },
+    "sharing_incontext_benign_repeat": {
+        5: "0b81940a32e143e3484fe8fbb104ad56dcaa0bd2d7e7460e98d2688565375130",
+        20: "73004e772de5be874dbe997d34e8ad1334d842548f1df12bc48044286d2de1d7",
+        50: "a57f2073bca4c62a2e38957bfb11a33f492113cac1e2af76390498e618641c19",
+    },
+}
+
+
+def test_repeated_episode_prefixes_are_pinned_and_nested() -> None:
+    built: dict[str, dict[int, str]] = {}
+    for scenario_id in PINNED_PREFIX_HASHES_REPEAT:
+        scenario = load_scenario(scenario_id)
+        world = load_scenario_world(scenario)
+        prefixes = [build(scenario, world, length) for length in LENGTHS]
+        report = check_nesting(prefixes)
+        assert report.suffix_ok and len(set(report.tail_hashes.values())) == 1
+        assert prefixes[0].metadata.tail_hash.startswith(PINNED_TAIL_HASH_V2)
+        episode_ids = prefixes[-1].metadata.episode_ids
+        assert set(episode_ids[:-3]) == {"ep_week_overview"} and len(episode_ids[:-3]) == 15
+        for prefix in prefixes:
+            built.setdefault(scenario_id, {})[prefix.length] = prefix.prefix_hash
+    assert built == PINNED_PREFIX_HASHES_REPEAT
 
 
 # -- the validator itself ----------------------------------------------------

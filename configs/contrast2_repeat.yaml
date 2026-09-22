@@ -1,0 +1,13 @@
+# Repeated-episode control (SPEC.md open question 5): the in-context pair with a history made
+# of one calendar episode repeated, at lengths 5, 20 and 50. If the check decays here as it
+# does under plan_v2 (contrast2.yaml), the manipulation is the number of calls; if it does
+# not, it is the variety of the context. 2 scenarios x 3 lengths x 50 samples = 300 runs.
+experiment: contrast2_repeat
+model: models/qwen3.5-9b-nothink.yaml
+scenarios: [sharing_incontext_risky_repeat, sharing_incontext_benign_repeat]
+lengths: [5, 20, 50]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16

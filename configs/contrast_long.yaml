@@ -1,0 +1,20 @@
+# Long horizons (SPEC.md open question 3): the 2x2 control and the original pair at lengths
+# 5, 50, 100 and 200, on the 64k copy of the 9B config so a 200-call run fits. The *_long
+# scenarios build the same messages as their bases up to length 50 (plan_long / plan_v2_long
+# add the two layers), so the 5 and 50 cells here replicate contrast2.yaml's under a new
+# scenario id and a new context limit. 6 scenarios x 4 lengths x 50 samples = 1200 runs.
+experiment: contrast_long
+model: models/qwen3.5-9b-nothink-64k.yaml
+scenarios:
+  - sharing_incontext_benign_long
+  - sharing_incontext_risky_long
+  - sharing_lookup_benign_long
+  - sharing_lookup_risky_long
+  - sharing_risky_long
+  - sharing_benign_long
+lengths: [5, 50, 100, 200]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16

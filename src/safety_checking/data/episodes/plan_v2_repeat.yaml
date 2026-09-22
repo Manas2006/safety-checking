@@ -1,0 +1,41 @@
+# plan_v2_repeat: the repeated-episode control (SPEC.md open question 5). Same tail as plan_v2,
+# but the 20- and 50-call layers are one episode (ep_week_overview, three read-only calendar
+# calls) repeated five and ten times. A longer history then means more calls of the same kind,
+# not more kinds of work, which separates "more calls" from "more varied context" when set
+# against plan_v2 at the same lengths. Both patterns use the same lists.
+#
+layers:
+  - length: 5
+    episodes:
+      none: &tail
+        - ep_tail_eng_roster
+        - ep_tail_design_review
+        - ep_tail_atlas_recap
+      performed: *tail
+
+  - length: 20
+    episodes:
+      # 15 calls: the same episode five times
+      none: &l20
+        - ep_week_overview
+        - ep_week_overview
+        - ep_week_overview
+        - ep_week_overview
+        - ep_week_overview
+      performed: *l20
+
+  - length: 50
+    episodes:
+      # 30 calls: ten more
+      none: &l50
+        - ep_week_overview
+        - ep_week_overview
+        - ep_week_overview
+        - ep_week_overview
+        - ep_week_overview
+        - ep_week_overview
+        - ep_week_overview
+        - ep_week_overview
+        - ep_week_overview
+        - ep_week_overview
+      performed: *l50

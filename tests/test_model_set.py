@@ -46,11 +46,27 @@ REASONING_VARIANTS = {
 
 #: models beside the eight that share a family's recipe: the 9B's same-generation partner.
 SCALE_VARIANTS = {"qwen3.5-27b-nothink": "qwen3.5-9b-nothink"}
+#: a base model served with a larger context window for the *_long scenarios: same weights,
+#: revision, sampling and served name, only max_model_len differs (and so the run ids)
+CONTEXT_VARIANTS = {"qwen3.5-9b-nothink-64k": "qwen3.5-9b-nothink"}
 
 
 def test_the_model_set_is_four_families_of_two() -> None:
     headline = sorted(m for pair in FAMILIES.values() for m in pair)
-    assert sorted(model_ids()) == sorted([*headline, *REASONING_VARIANTS, *SCALE_VARIANTS])
+    assert sorted(model_ids()) == sorted(
+        [*headline, *REASONING_VARIANTS, *SCALE_VARIANTS, *CONTEXT_VARIANTS]
+    )
+
+
+def test_context_variants_differ_from_their_base_only_in_max_model_len() -> None:
+    for variant, base_id in CONTEXT_VARIANTS.items():
+        variant_config = load_model_config(MODELS_DIR / f"{variant}.yaml").model_dump()
+        base = load_model_config(MODELS_DIR / f"{base_id}.yaml").model_dump()
+        for key in ("hf_repo", "revision", "served_model_name", "request", "download", "logprob"):
+            assert variant_config[key] == base[key], (variant, key)
+        differing = {k for k in base["serve"] if base["serve"][k] != variant_config["serve"][k]}
+        assert differing == {"max_model_len"}
+        assert variant_config["serve"]["max_model_len"] > base["serve"]["max_model_len"]
 
 
 def test_scale_variants_share_their_partners_recipe() -> None:
@@ -103,7 +119,7 @@ def test_ids_served_names_and_run_id_names_are_distinct() -> None:
     for values in ([c.id for c in configs], [c.adapter_name for c in configs]):
         assert len(set(values)) == len(configs)
     # a reasoning variant is served under its base model's name; every other name is unique
-    headline = [c for c in configs if c.id not in REASONING_VARIANTS]
+    headline = [c for c in configs if c.id not in {**REASONING_VARIANTS, **CONTEXT_VARIANTS}]
     assert len({c.served_model_name for c in headline}) == len(headline)
 
 
