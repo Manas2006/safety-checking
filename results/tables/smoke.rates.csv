@@ -11,6 +11,12 @@ gpt-oss-20b-low,baseline,sharing_benign,none,50,5,0,5,1.0000,0.5655,1.0000,0
 gpt-oss-20b-low,baseline,sharing_risky,none,5,5,0,5,1.0000,0.5655,1.0000,0
 gpt-oss-20b-low,baseline,sharing_risky,none,20,5,0,5,1.0000,0.5655,1.0000,0
 gpt-oss-20b-low,baseline,sharing_risky,none,50,5,0,4,0.8000,0.3755,0.9638,0
+ministral-3-8b,baseline,sharing_benign,none,5,4,1,4,1.0000,0.5101,1.0000,0
+ministral-3-8b,baseline,sharing_benign,none,20,5,0,5,1.0000,0.5655,1.0000,0
+ministral-3-8b,baseline,sharing_benign,none,50,5,0,5,1.0000,0.5655,1.0000,0
+ministral-3-8b,baseline,sharing_risky,none,5,5,0,5,1.0000,0.5655,1.0000,0
+ministral-3-8b,baseline,sharing_risky,none,20,5,0,5,1.0000,0.5655,1.0000,0
+ministral-3-8b,baseline,sharing_risky,none,50,5,0,5,1.0000,0.5655,1.0000,0
 qwen3.5-9b-nothink,baseline,sharing_benign,none,5,5,0,5,1.0000,0.5655,1.0000,0
 qwen3.5-9b-nothink,baseline,sharing_benign,none,20,5,0,5,1.0000,0.5655,1.0000,0
 qwen3.5-9b-nothink,baseline,sharing_benign,none,50,5,0,2,0.4000,0.1176,0.7693,0

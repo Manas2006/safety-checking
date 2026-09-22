@@ -823,6 +823,27 @@ def test_render_check_notices_reordering_and_thinking_markup() -> None:
     assert verify_rendering(in_order + "<think>\n\n</think>", messages).thinking_markup_present
 
 
+def test_render_check_accepts_a_rendering_whose_spaces_were_dropped() -> None:
+    """Ministral's /detokenize returns the text without spaces (job 3461351): every word is
+    there, in order, so the check passes on a whitespace-stripped pass and says how many
+    items needed it. A word that is really absent is still missing."""
+    messages = [
+        {"role": "user", "content": "first question"},
+        {"role": "assistant", "content": "first answer"},
+        {"role": "user", "content": "second question"},
+    ]
+    report = verify_rendering("firstquestion...firstanswer...secondquestion", messages)
+    assert report.ok and report.n_found_whitespace_stripped == 3
+    assert not report.missing and not report.out_of_order
+
+    clean = verify_rendering("first question ... first answer ... second question", messages)
+    assert clean.ok and clean.n_found_whitespace_stripped == 0
+
+    partial = verify_rendering("firstquestion...secondquestion", messages)
+    assert partial.ok is False and partial.missing == ["assistant[1]"]
+    assert partial.n_found_whitespace_stripped == 2
+
+
 def test_expected_items_cover_calls_string_arguments_and_results() -> None:
     _, _, prefix = cell("sharing_risky", 5)
     kinds = [item.kind for item in expected_items(prefix.messages)]

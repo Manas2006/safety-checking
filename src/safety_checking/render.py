@@ -13,6 +13,7 @@ torch, transformers or vllm. It runs inside a job, next to the server.
 from __future__ import annotations
 
 import json
+import re
 import urllib.request
 from collections.abc import Callable
 from pathlib import Path
@@ -60,6 +61,10 @@ class RenderReport(BaseModel):
     #: (gpt-oss) wraps every tool result that way, so the model reads {"ok":true} as
     #: "{\"ok\":true}". Present and in order, so not a fault; counted so it is visible.
     n_found_json_escaped: int = 0
+    #: items found only after removing every whitespace character from both sides. The
+    #: /detokenize of a tekken vocabulary (Ministral) returns the text with its spaces dropped,
+    #: so the words are all there but nothing matches as written. Counted so it is visible.
+    n_found_whitespace_stripped: int = 0
     n_prompt_tokens: int | None = None
     thinking_markup_present: bool = False
 
@@ -95,9 +100,11 @@ def expected_items(messages: list[dict[str, Any]]) -> list[Expected]:
     return items
 
 
-def verify_rendering(text: str, messages: list[dict[str, Any]]) -> RenderReport:
-    """Walk the text once, left to right, looking for each expected item after the last one."""
-    items = expected_items(messages)
+_WHITESPACE = re.compile(r"\s+")
+
+
+def _walk(text: str, items: list[Expected], squash: bool) -> tuple[int, int, list[str], list[str]]:
+    """One left-to-right pass. Returns (found, found as JSON literal, out of order, missing)."""
     cursor = 0
     found = 0
     escaped = 0
@@ -106,17 +113,37 @@ def verify_rendering(text: str, messages: list[dict[str, Any]]) -> RenderReport:
     for item in items:
         # the item as written, else as a JSON string literal of itself (see the report field)
         forms = [item.needle, json.dumps(item.needle)[1:-1]]
+        if squash:
+            forms = [_WHITESPACE.sub("", form) for form in forms]
         positions = [text.find(form, cursor) for form in forms]
         hits = [(pos, form) for pos, form in zip(positions, forms, strict=True) if pos >= 0]
         if hits:
             position, form = min(hits)
             cursor = position + len(form)
             found += 1
-            escaped += form != item.needle
+            escaped += form != forms[0]
         elif any(form in text for form in forms):
             out_of_order.append(item.label)
         else:
             missing.append(item.label)
+    return found, escaped, out_of_order, missing
+
+
+def verify_rendering(text: str, messages: list[dict[str, Any]]) -> RenderReport:
+    """Walk the text once, left to right, looking for each expected item after the last one.
+
+    If that leaves items missing, walk again with every whitespace character removed from
+    the text and the items: a detokenizer that drops spaces (see the report field) still
+    shows every word in order, and that pass says whether anything is really absent.
+    """
+    items = expected_items(messages)
+    found, escaped, out_of_order, missing = _walk(text, items, squash=False)
+    stripped = 0
+    if missing or out_of_order:
+        squashed = _walk(_WHITESPACE.sub("", text), items, squash=True)
+        if len(squashed[3]) + len(squashed[2]) < len(missing) + len(out_of_order):
+            stripped = squashed[0] - found
+            found, escaped, out_of_order, missing = squashed
     return RenderReport(
         ok=not missing and not out_of_order,
         n_expected=len(items),
@@ -126,6 +153,7 @@ def verify_rendering(text: str, messages: list[dict[str, Any]]) -> RenderReport:
         n_tool_calls=sum(1 for i in items if i.kind == "tool_call"),
         n_tool_results=sum(1 for i in items if i.kind == "tool_result"),
         n_found_json_escaped=escaped,
+        n_found_whitespace_stripped=stripped,
         thinking_markup_present="<think>" in text,
     )
 
