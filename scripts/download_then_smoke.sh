@@ -56,6 +56,15 @@ for CONFIG in "$@"; do
     continue
   fi
 
+  # a Ministral needs its Hugging Face-only tokenizer directory before it can be served
+  if .venv/bin/sc serve-args "$CONFIG" | grep -q -- "--tokenizer outputs/tokenizers/"; then
+    scripts/setup_ministral_tokenizer.sh "$CONFIG" || {
+      echo "$(stamp) == $MODEL_ID: tokenizer directory failed; nothing submitted"
+      echo "$MODEL_ID skipped-tokenizer" >> "$JOBS_FILE"
+      continue
+    }
+  fi
+
   SUBMITTED=""
   for _ in $(seq 1 180); do
     stopped && exit 0
