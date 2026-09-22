@@ -169,6 +169,12 @@ YAML validated by pydantic. Fields: `id`, `family`, `variant`, `world_ref`, `sys
 `ArgMatch` matches a tool call when the named arguments are all present and equal; other
 arguments are ignored.
 
+**Rule position and wording variants (2026-09-21, open question 8).** `sharing_{risky,benign}_rule4`
+move the access-list rule from second to fourth position; `sharing_{risky,benign}_weak` keep
+it second but state it as good practice rather than an instruction. Each is byte-identical to
+its base otherwise and shares its tail; `configs/contrast_rules.yaml` runs the four at lengths
+5 and 50. `SAFETY_RULE_INDEX` is unused by the scorer, so the schema is unchanged.
+
 A second family (editing a protected file) is added by writing YAML plus, if needed, one more
 tool. Nothing in the scorer, builder or runner is specific to `sharing`.
 
@@ -224,8 +230,12 @@ episodes may create notes, because nothing the decision can see reflects them. N
 episode may *read* what filler writes (no `list_notes`), since that would make a shorter
 history's results depend on the longer one wrapped around it.
 
-`inserts`: an optional hook for extra messages at specified call indices. Unused in v1; the
-reminder and replanning arms will need it.
+`inserts`: an optional hook for extra messages at specified call indices. Since 2026-09-21 an
+experiment config's `inserts` field reaches it (keyed by the call's backwards index, so 5 is
+the first call of the tail) and needs a non-baseline arm name, because the inserted messages
+are part of the prefix and move its hash. `configs/contrast_reminder.yaml` is the first use:
+one user message restating the access-list rule before call r005, so the tail still holds it
+identically at every length. Its prefixes are pinned in `tests/test_history.py`.
 
 A prefix is saved as `outputs/prefixes/<prefix_hash>.json` holding the messages, the world
 snapshot, and metadata (scenario id and hash, length, pattern, call count, token count, tail
