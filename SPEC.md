@@ -460,6 +460,13 @@ the paper has to say:
 - **`max_model_len` is 32768 for the seven new configs** (16384 for the first, unchanged so its
   run ids stand). It is not a behavioural parameter; other tokenizers count our prompts
   differently from `o200k_base`, and `sc render` makes the exact check on the node.
+- **The serving environment is not hashed, so it is recorded here.** `$WORK/venvs/vllm` is
+  vLLM 0.29.0+cu129 with transformers pinned to 5.16.1 (`scripts/setup_vllm_env.sh`). vLLM
+  declares only `transformers>=5.10.4`; 5.17.0 renamed a Pixtral class vLLM imports, and the
+  first Ministral job (3458957) died at server start on it. The first Qwen-9B and Gemma-12B
+  smoke runs (jobs 3458956, 3458971) were made under 5.17.0; everything after 2026-09-21 is
+  under 5.16.1. transformers supplies configs and tokenizers to vLLM, not kernels, so this is
+  not expected to change a distribution, but it is a difference and is written down.
 - **H100.** Nothing of ours has run on `gpu-h100` yet. The two configs sized for it say so, and
   the partition is chosen on the `sbatch` line (`-p gpu-h100`), never by the script.
 

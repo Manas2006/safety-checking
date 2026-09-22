@@ -80,7 +80,11 @@ esac
 
 mkdir -p "$(dirname "$VENV")"
 uv venv "$VENV" --python 3.12 --allow-existing
-uv pip install --python "$VENV/bin/python" --torch-backend="$VARIANT" "${EXTRA[@]}" "$SPEC"
+# transformers is pinned: vLLM 0.29.0 says only >=5.10.4, and 5.17.0 renamed a Pixtral class it
+# imports (PixtralRotaryEmbedding), so every Mistral3 model failed at server start (job 3458957).
+# 5.16.1 is the last release with the old name.
+TRANSFORMERS_PIN="transformers==5.16.1"
+uv pip install --python "$VENV/bin/python" --torch-backend="$VARIANT" "${EXTRA[@]}" "$SPEC" "$TRANSFORMERS_PIN"
 
 # metadata only: no import of torch or vllm
 "$VENV/bin/python" - <<'PY'
