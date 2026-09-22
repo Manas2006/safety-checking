@@ -16,3 +16,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .ipynb_checkpoints/
+
+# Claude Code personal settings (the sbatch allow rule only means something on LS6)
+.claude/settings.local.json
