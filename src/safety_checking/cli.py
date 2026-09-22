@@ -10,6 +10,7 @@ sc render --config ...           render a prefix through the served chat templat
 sc logprob --config ...          read the next-call distribution at each probe point
 sc show FILE --index 0           render one trajectory as markdown
 sc counts FILE                   outcome counts per cell (counts only, never rates)
+sc rates FILE...                 check rates with Wilson intervals, and 5-vs-longest contrasts
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from dotenv import load_dotenv
 from rich.console import Console
 from rich.table import Table
 
+from .analysis import main_rates
 from .config import load_any, load_experiment_config
 from .history.builder import build_prefix, check_nesting
 from .history.plan import PRIOR_CHECK_PATTERNS, load_plan
@@ -498,6 +500,11 @@ def build_parser() -> argparse.ArgumentParser:
     counts = commands.add_parser("counts", help="outcome counts per cell")
     counts.add_argument("file")
     counts.set_defaults(func=cmd_counts)
+
+    rates = commands.add_parser("rates", help="check rates per cell, with intervals and contrasts")
+    rates.add_argument("files", nargs="+", help="run logs (outputs/runs/*.jsonl)")
+    rates.add_argument("--csv", action="store_true", help="the rates table as CSV, no contrasts")
+    rates.set_defaults(func=lambda a: main_rates([Path(f) for f in a.files], as_csv=a.csv))
     return parser
 
 
