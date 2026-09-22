@@ -56,7 +56,12 @@ request:
       enable_thinking: false
   base_seed: 0
 
-# No `logprob` section yet: the call opener is read off this model's own rendered prompt first.
+# Logprob mode (SPEC.md 3.10): the 31B ships a byte-identical chat template to the 12B, whose
+# rendered prompt (job 3458971) opens a call with "<|tool_call>call:NAME{". Confirm against
+# this model's own render before trusting a logprob run. Not part of the config hash.
+logprob:
+  call_opener: "<|tool_call>call:"
+  name_terminator: "{"
 
 notes: >-
   Medium Gemma, gpu-h100 (2x H100 80 GB). Not yet served, and nothing of ours has run on an

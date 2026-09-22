@@ -64,7 +64,12 @@ request:
       enable_thinking: false
   base_seed: 0
 
-# No `logprob` section yet: the call opener is read off this model's own rendered prompt first.
+# Logprob mode (SPEC.md 3.10). Read off this model's rendered prompt from job 3458971
+# (outputs/renders/sharing_risky.L50.none.gemma-4-12b-nothink.txt): a call is
+# "<|tool_call>call:NAME{ARGS}<tool_call|>". Not part of the config hash.
+logprob:
+  call_opener: "<|tool_call>call:"
+  name_terminator: "{"
 
 notes: >-
   Small Gemma, one A100. Not yet served: the first smoke run is also the first test of this file.

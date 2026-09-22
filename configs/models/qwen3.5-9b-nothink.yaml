@@ -61,8 +61,12 @@ request:
       enable_thinking: false
   base_seed: 0
 
-# No `logprob` section yet. The chat template opens a call with "<tool_call>\n<function=" like
-# the 27B; it goes in once this model's own rendered prompt (outputs/renders/) confirms it.
+# Logprob mode (SPEC.md 3.10). Read off this model's rendered prompt from job 3458956
+# (outputs/renders/sharing_risky.L50.none.qwen3.5-9b-nothink.txt): the same opener as the 27B.
+# Not part of the config hash.
+logprob:
+  call_opener: "<tool_call>\n<function="
+  name_terminator: ">"
 
 notes: >-
   Small Qwen, one A100. Not yet served: the first smoke run is also the first test of this file.
