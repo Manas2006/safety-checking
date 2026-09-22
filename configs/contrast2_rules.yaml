@@ -1,0 +1,17 @@
+# Rule position on the 2x2 (SPEC.md open question 8): the in-context pair with the access-list
+# rule first or fourth in the standing rules, against second (contrast2.yaml). On the original
+# pair (contrast_rules.yaml) the risky twin could not move because of the lookup effect; here
+# it can. 4 scenarios x 2 lengths x 50 samples = 400 runs.
+experiment: contrast2_rules
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_incontext_risky_rule1
+  - sharing_incontext_benign_rule1
+  - sharing_incontext_risky_rule4
+  - sharing_incontext_benign_rule4
+lengths: [5, 50]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16

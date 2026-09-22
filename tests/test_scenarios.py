@@ -30,6 +30,13 @@ RULE_VARIANTS = {
 
 LONG_HORIZON = {f"{s}_long" for s in ("sharing_risky", "sharing_benign", *CONTROL_2X2)}
 REPEATED = {"sharing_incontext_risky_repeat", "sharing_incontext_benign_repeat"}
+IN_CONTEXT_PAIR = ("sharing_incontext_risky", "sharing_incontext_benign")
+#: the in-context pair under a plan that swaps the filler (results section 10)
+INGREDIENTS = {
+    f"{s}_{k}": f"plan_v2_{k}" for s in IN_CONTEXT_PAIR for k in ("light", "double20", "nonotes")
+}
+#: the in-context pair with the access-list rule first or fourth
+RULE_POSITION_2X2 = {f"{s}_{k}" for s in IN_CONTEXT_PAIR for k in ("rule1", "rule4")}
 
 
 def test_every_scenario_loads_and_validates() -> None:
@@ -41,20 +48,36 @@ def test_every_scenario_loads_and_validates() -> None:
         *RULE_VARIANTS,
         *LONG_HORIZON,
         *REPEATED,
+        *INGREDIENTS,
+        *RULE_POSITION_2X2,
     }
 
 
-def test_long_and_repeat_scenarios_differ_from_their_bases_only_in_the_plan() -> None:
-    for scenario_id in (*LONG_HORIZON, *REPEATED):
-        base_id, _, suffix = scenario_id.rpartition("_")
+def test_plan_variant_scenarios_differ_from_their_bases_only_in_the_plan() -> None:
+    expected_plan = {
+        **{s: load_scenario(s.removesuffix("_long")).plan_ref + "_long" for s in LONG_HORIZON},
+        **{s: "plan_v2_repeat" for s in REPEATED},
+        **INGREDIENTS,
+    }
+    for scenario_id, plan_ref in expected_plan.items():
+        base_id = scenario_id.rpartition("_")[0]
         edited = load_scenario(scenario_id).model_dump()
         base = load_scenario(base_id).model_dump()
         differing = {k for k in base if base[k] != edited[k]}
         assert differing == {"id", "plan_ref"}, scenario_id
-        assert (
-            edited["plan_ref"]
-            == {"long": base["plan_ref"] + "_long", "repeat": "plan_v2_repeat"}[suffix]
-        )
+        assert edited["plan_ref"] == plan_ref
+
+
+def test_rule_position_2x2_scenarios_move_only_the_rule() -> None:
+    for scenario_id in RULE_POSITION_2X2:
+        base_id, _, suffix = scenario_id.rpartition("_")
+        edited = load_scenario(scenario_id).model_dump()
+        base = load_scenario(base_id).model_dump()
+        assert {k for k in base if base[k] != edited[k]} == {"id", "system_prompt"}
+        rules = edited["system_prompt"]["standing_rules"]
+        base_rules = base["system_prompt"]["standing_rules"]
+        assert sorted(rules) == sorted(base_rules)
+        assert rules.index(base_rules[SAFETY_RULE_INDEX]) == {"rule1": 0, "rule4": 3}[suffix]
 
 
 def test_rule_variants_change_only_the_system_prompt() -> None:

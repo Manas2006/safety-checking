@@ -1,0 +1,20 @@
+# Which content of the history decays the check (results section 10)? The in-context pair
+# under three plans that share plan_v2's tail: `light` (the 20- and 50-layers from the light
+# long-horizon filler), `double20` (the 50-layer is the 20-layer again), `nonotes` (the four
+# note-writing episodes swapped for read-only ones). Compared with contrast2.yaml at the same
+# lengths. Length 5 is the shared tail and is not rerun. 6 scenarios x 2 lengths x 50 = 600 runs.
+experiment: contrast2_ingredients
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_incontext_risky_light
+  - sharing_incontext_benign_light
+  - sharing_incontext_risky_double20
+  - sharing_incontext_benign_double20
+  - sharing_incontext_risky_nonotes
+  - sharing_incontext_benign_nonotes
+lengths: [20, 50]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16
