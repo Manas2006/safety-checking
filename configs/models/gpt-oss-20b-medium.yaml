@@ -1,0 +1,49 @@
+# openai/gpt-oss-20b, MXFP4, reasoning effort MEDIUM, served by vLLM on ONE A100 40 GB.
+# gpt-oss-20b-low.yaml with reasoning_effort medium, the model's default and what a deployed
+# agent would most likely run (SPEC.md open question 17). Same weights, revision and server;
+# max_tokens raised to 4096 and max_model_len to 65536 so eight medium-effort steps fit.
+# Everything the low config's header says about this family applies here too.
+#
+# Everything in this file is hashed into the adapter name, and so into every run id.
+
+id: gpt-oss-20b-medium
+hf_repo: openai/gpt-oss-20b
+revision: 6cee5e81ee83917806bbde320786a8fb61efebee
+served_model_name: gpt-oss-20b
+
+serve:
+  vllm_version: "0.29.0"
+  # 13.8 GB of weights on one 40 GB card
+  tensor_parallel_size: 1
+  max_model_len: 65536
+  # "auto" takes the checkpoint as released: MXFP4 experts, BF16 elsewhere
+  dtype: auto
+  gpu_memory_utilization: 0.90
+  max_num_seqs: 16
+  seed: 0
+  tool_call_parser: openai
+  reasoning_parser: openai_gptoss
+  enable_prefix_caching: true
+  host: 127.0.0.1
+  port: 8000
+  startup_timeout_s: 1200
+  env:
+    # LS6 compute nodes have no nvcc. See qwen3.8-27b-nothink.yaml. With top_p 1.0 and no
+    # top_k the sampler has nothing to do, but the FlashInfer one still compiles at warm-up.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+
+request:
+  sampling:
+    temperature: 1.0
+    top_p: 1.0
+    reasoning_effort: medium
+    max_tokens: 4096
+  base_seed: 0
+
+download:
+  exclude:
+    - original/*
+    - metal/*
+
+notes: >-
+  Small gpt-oss at medium effort. Not yet served.

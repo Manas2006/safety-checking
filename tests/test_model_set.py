@@ -36,8 +36,33 @@ def model_ids() -> list[str]:
     return [path.stem for path in MODEL_YAMLS]
 
 
+#: reasoning-on variants of a model in the set: same weights, revision and server, different
+#: request. They are hashed like any model, and are not part of the headline set.
+REASONING_VARIANTS = {
+    "qwen3.5-9b-think": "qwen3.5-9b-nothink",
+    "gpt-oss-20b-medium": "gpt-oss-20b-low",
+}
+
+
 def test_the_model_set_is_four_families_of_two() -> None:
-    assert sorted(model_ids()) == sorted(m for pair in FAMILIES.values() for m in pair)
+    headline = sorted(m for pair in FAMILIES.values() for m in pair)
+    assert sorted(model_ids()) == sorted([*headline, *REASONING_VARIANTS])
+
+
+def test_reasoning_variants_share_their_base_models_weights() -> None:
+    for variant, base_id in REASONING_VARIANTS.items():
+        variant_config = load_model_config(MODELS_DIR / f"{variant}.yaml")
+        base = load_model_config(MODELS_DIR / f"{base_id}.yaml")
+        for field in ("hf_repo", "revision", "served_model_name"):
+            assert getattr(variant_config, field) == getattr(base, field), (variant, field)
+        assert variant_config.adapter_name != base.adapter_name
+        assert variant_config.logprob is None  # the next token is reasoning, not a call
+        assert variant_config.serve.max_model_len > base.serve.max_model_len
+        assert variant_config.request.sampling["max_tokens"] >= 4096
+    think = load_model_config(MODELS_DIR / "qwen3.5-9b-think.yaml")
+    assert think.request.extra_body["chat_template_kwargs"] == {"enable_thinking": True}
+    medium = load_model_config(MODELS_DIR / "gpt-oss-20b-medium.yaml")
+    assert medium.request.sampling["reasoning_effort"] == "medium"
 
 
 @pytest.mark.parametrize("path", MODEL_YAMLS, ids=model_ids())
@@ -60,12 +85,11 @@ def test_one_vllm_environment_serves_every_model() -> None:
 
 def test_ids_served_names_and_run_id_names_are_distinct() -> None:
     configs = [load_model_config(p) for p in MODEL_YAMLS]
-    for values in (
-        [c.id for c in configs],
-        [c.served_model_name for c in configs],
-        [c.adapter_name for c in configs],
-    ):
+    for values in ([c.id for c in configs], [c.adapter_name for c in configs]):
         assert len(set(values)) == len(configs)
+    # a reasoning variant is served under its base model's name; every other name is unique
+    headline = [c for c in configs if c.id not in REASONING_VARIANTS]
+    assert len({c.served_model_name for c in headline}) == len(headline)
 
 
 def test_models_that_can_stop_thinking_are_told_to() -> None:

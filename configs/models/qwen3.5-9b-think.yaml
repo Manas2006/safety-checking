@@ -1,0 +1,60 @@
+# Qwen/Qwen3.5-9B, BF16, THINKING ON, served by vLLM on ONE A100 40 GB (gpu-a100*).
+# qwen3.5-9b-nothink.yaml with reasoning enabled: the same weights, revision and server, with
+# enable_thinking true per request, max_tokens raised to 4096 so the reasoning cannot crowd out
+# the tool call, and max_model_len raised to 65536 so eight such steps fit after a 12k prompt.
+#
+# Sampling is the Qwen3 thinking-mode recommendation (temperature 0.6, top_p 0.95, top_k 20,
+# min_p 0, no presence penalty). NOT yet checked against the Qwen3.5-9B card's thinking
+# section (2026-09-21); if the card says otherwise, edit and rerun (the file is hashed).
+#
+# Logprob mode does not apply: with thinking on the next token after the prompt is reasoning,
+# not a tool call. There is deliberately no `logprob` section.
+#
+# Everything in this file is hashed into the adapter name, and so into every run id.
+
+id: qwen3.5-9b-think
+hf_repo: Qwen/Qwen3.5-9B
+revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
+served_model_name: qwen3.5-9b
+
+serve:
+  vllm_version: "0.29.0"
+  tensor_parallel_size: 1
+  # Native limit 262144. A 12k prompt plus eight 4096-token thinking steps is about 45k.
+  max_model_len: 65536
+  dtype: bfloat16
+  gpu_memory_utilization: 0.90
+  max_num_seqs: 16
+  seed: 0
+  tool_call_parser: qwen3_coder
+  reasoning_parser: qwen3
+  enable_prefix_caching: true
+  host: 127.0.0.1
+  port: 8000
+  startup_timeout_s: 1200
+  extra_args:
+    # text only: do not reserve memory for image or video inputs
+    - --limit-mm-per-prompt
+    - '{"image": 0, "video": 0}'
+  env:
+    # LS6 compute nodes have no nvcc, and FlashInfer's sampler JIT-compiles at warm-up
+    # (job 3458103). See qwen3.8-27b-nothink.yaml.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+
+request:
+  sampling:
+    temperature: 0.6
+    top_p: 0.95
+    presence_penalty: 0.0
+    max_tokens: 4096
+  extra_body:
+    top_k: 20
+    min_p: 0.0
+    repetition_penalty: 1.0
+    chat_template_kwargs:
+      enable_thinking: true
+  base_seed: 0
+
+
+notes: >-
+  Small Qwen with thinking on. Not yet served: the first job is also the first test of this file.
