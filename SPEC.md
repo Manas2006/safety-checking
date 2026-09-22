@@ -66,6 +66,19 @@ runs the four at lengths 5 and 50. A scenario names its plan with `plan_ref` (de
 the plan is left out of the scenario hash because the prefix hash already covers the messages
 it produces, so the original pinned prefixes are unchanged. Tests pin the new ones.
 
+**Second result: the decisive cell decays (2026-09-21, jobs 3461295 to 3461298, all Qwen3.5-9B,
+50 samples per cell).** Under neutral sampling (`configs/contrast2_neutral.yaml`, temperature
+1, no penalties) `sharing_incontext_risky` checks 0.96 at length 5 and 0.44 [0.31, 0.58] at
+length 50 (Fisher p = 8e-9); 27 of the 50 long runs sent the document to the unauthorised
+recipient without checking, against 2 of 50 short ones. The lookup cells decay less
+(benign 0.98 to 0.82, risky 0.98 to 0.88), so needing a lookup first is what kept the original
+risky twin at 1.00, not caution. The baseline-sampling 2x2 (job 3461292) is still queued.
+Three ablations on the original pair: presence_penalty 0 reproduces 1.00 to 0.66 in the benign
+twin, so the penalty is not the mechanism; moving the rule to fourth position lowers the
+benign long rate to 0.50 and stating it as good practice leaves it at 0.64, both still 1.00
+in risky; one user message restating the rule before the final five calls restores 1.00 at
+every length in both twins (`configs/contrast_reminder.yaml`).
+
 ## 2. Design principles
 
 1. **Frozen histories.** A history is built once, saved, and replayed as a prefix. Only the
