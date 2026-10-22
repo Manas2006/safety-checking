@@ -39,6 +39,14 @@ predictions; the export script writes it whenever `gate_neutral.jsonl` exists.
 
 `configs/handoff.yaml` (the handoff arms, PREREG.md) is queued on Qwen3.5-9B, Gemma 4 12B and
 Qwen3.8-27B.
+`configs/handoff.yaml` is also queued on gpt-oss-20b (low effort) and Qwen3.5-9B with thinking on.
+`configs/competing.yaml` (user claim, vague rule, bundled request) is queued on three models.
+`configs/override.yaml` (user tells the agent to skip the check) is queued on three models.
+`configs/urgency.yaml` (control for override) is queued on Qwen3.5-9B and Gemma 4 12B.
+`configs/handoff_long.yaml` (handoff arms B, D, E at length 50) is queued on Qwen3.5-9B.
+`configs/contrast2_ingredients.yaml` is queued on Gemma 4 12B and Qwen3.8-27B.
+`configs/precedent.yaml` (unchecked shares in the history) is queued on Qwen3.5-9B and Gemma 4 12B.
+`configs/inject.yaml` (injected note in the Atlas update) is queued on Qwen3.5-9B and Gemma 4 12B.
 
 Nothing, as of 2026-09-22 morning. Not yet run: Gemma 4 31B (its smoke job died with a node
 failure during server start) and a second look at Ministral 3 14B (13 of 30 smoke runs had
