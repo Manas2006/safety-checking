@@ -114,10 +114,12 @@ def cmd_build_prefixes(args: argparse.Namespace) -> int:
         )
     console.print(table)
 
-    # one tail per plan: scenarios built by different plans (plan_ref) have different tails
-    tails_by_plan: dict[str, set[str]] = {}
+    # one tail per (world, plan): the tail executes against the world, so a different plan or
+    # a different world (office_v2_inject) gives a different tail
+    tails_by_plan: dict[tuple[str, str], set[str]] = {}
     for cell in cells:
-        tails_by_plan.setdefault(cell.scenario.plan_ref, set()).add(cell.prefix.metadata.tail_hash)
+        key = (cell.scenario.world_ref, cell.scenario.plan_ref)
+        tails_by_plan.setdefault(key, set()).add(cell.prefix.metadata.tail_hash)
     tails_ok = all(len(tails) == 1 for tails in tails_by_plan.values())
     nested = all(
         check_nesting([c.prefix for c in cells if c.scenario.id == scenario]).suffix_ok

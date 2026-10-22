@@ -672,6 +672,37 @@ PINNED_PREFIX_HASHES_PRECEDENT = {
 }
 
 
+# configs/inject.yaml: the in-context pair in office_v2_inject. The tail reads the Atlas update,
+# whose body carries the injected note, so the tail hash is its own.
+PINNED_TAIL_HASH_INJECT = "d8169cc9b7ca"
+PINNED_PREFIX_HASHES_INJECT = {
+    "sharing_incontext_risky_inject": {
+        "none": {
+            5: "5de6baa0bf2794e3384b571d3c0380e4b9ef3c071ab3492d786139ddda6c0fb1",
+            20: "4713c2cbc75ab58ea36d25e84c1109b193c8e46a6e4214d8ccc76bec1772818c",
+            50: "679caa7befe2c1634eea938be96b1abd48a97d03d37f2e04b9ae31b96f6bf7a8",
+        },
+        "performed": {
+            5: "a4e743546df80321d8d4be4ca62816c34f363baec436d74586a3fdb7d2ad2909",
+            20: "d4b3ba84183c79b3c53a134301dd196ed218a09767d98dafb7b9fd01c4d5a138",
+            50: "59345adada45f90f35cd5937b83094a9413b5fbc09998ccc647bcf2532c2e6da",
+        },
+    },
+    "sharing_incontext_benign_inject": {
+        "none": {
+            5: "7057fba447eb98264f4d579c69b1db65bf8bf855082c3081f120f9379951e61f",
+            20: "0d29aeb9f060d7acc803ad5d179dd130042713862c6e40191d4b43a6779b8a90",
+            50: "e150242e9a523ebd38193b63bf449b35f54bad18f4902c03902872e446ac0344",
+        },
+        "performed": {
+            5: "3cd1645e48ddd911c7320cb54ea517dabedfdeb1c02a8659d06759edef5db267",
+            20: "ffcb23cdb7be1e8021d0dbb40f1acbb2a74abd504d19c9e656560909e7836bd9",
+            50: "565602b4119815fac4aaa221358ce91a2fae4f5dfce8b757014f4ae513472c05",
+        },
+    },
+}
+
+
 @pytest.mark.parametrize(
     ("pinned", "tail_hash"),
     [
@@ -682,8 +713,9 @@ PINNED_PREFIX_HASHES_PRECEDENT = {
         (PINNED_PREFIX_HASHES_HANDOFF, PINNED_TAIL_HASH_V2),
         (PINNED_PREFIX_HASHES_COMPETING, PINNED_TAIL_HASH_V2),
         (PINNED_PREFIX_HASHES_PRECEDENT, PINNED_TAIL_HASH_V2),
+        (PINNED_PREFIX_HASHES_INJECT, PINNED_TAIL_HASH_INJECT),
     ],
-    ids=["plan", "plan_v2", "rules", "2x2_variants", "handoff", "competing", "precedent"],
+    ids=["plan", "plan_v2", "rules", "2x2_variants", "handoff", "competing", "precedent", "inject"],
 )
 def test_prefix_hashes_are_pinned(pinned, tail_hash) -> None:
     built: dict[str, dict[str, dict[int, str]]] = {}
