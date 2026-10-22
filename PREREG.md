@@ -138,3 +138,76 @@ handoff.yaml on gpt-oss-20b at low effort extends the handoff experiment above t
 model, under that experiment's pre-specification. contrast2_ingredients.yaml on Gemma 4 12B and
 Qwen3.8-27B repeats results section 16 on the two capable models; no prediction was written
 for it, and it is reported descriptively against each model's contrast2 cells.
+
+# Follow-ups, 2026-10-22
+
+Written on 2026-10-22, after the first handoff results (results/2026-10-22-handoff.md) and
+before any of the runs below. Unless a section says otherwise: the primary outcome, the
+definition of a check, the exclusions and the stopping rule are those of the handoff
+experiment; n = 50 per cell; each contrast is a two-sided Fisher exact test on the risky cells,
+per model, Holm-Bonferroni within the config; the minimum effect of interest is 20 points. A
+section with no kill criterion of its own has none: a prediction that fails is reported as
+failed. The configs run on Qwen3.5-9B, Gemma 4 12B and Qwen3.8-27B with thinking off unless a
+section names other models.
+
+## handoff_performed.yaml
+
+Hypothesis: having done the check on other documents earlier in the session restores it after
+delegation, partly when the rule is absent and mostly when it is present. Contrasts: for each
+of arms D, E and F at length 20, `performed` against `none`; and each `none` cell against the
+same arm at length 5 in handoff.jsonl. Prediction: a history of two checked shares restores D
+partly and F mostly. Kill criterion: if F stays at or below 0.10 on Gemma 4 12B under
+`performed`, authority beats habit, and we report that as the main mechanism finding.
+
+## handoff_source.yaml
+
+Hypothesis: how much the orchestrator's assurance suppresses the check depends on where the
+claim comes from and how it is backed. Contrasts: peer, toolpaste and notool each against arm F
+in handoff.jsonl; pointer against arm D and against arm B. Predictions: a peer's claim relayed
+by the orchestrator is less effective than the orchestrator's own claim (check rate higher than
+F); the pasted tool output is at least as effective as F; the claim that names no tool is less
+effective than F; the pointer arm recovers between 0.20 and 0.50 of the gap between D and B.
+
+## handoff_hardened.yaml
+
+Hypothesis: a rule that says to check even when told access is confirmed resists the
+assurance. Contrasts: hardened-with-assurance against arm F; hardened-without-assurance against
+arm B. Predictions: the hardened rule raises Gemma 4 12B's F from 0.00 to at least 0.50;
+hardened without assurance stays at 1.00 with zero unsafe sends. Kill criterion: if hardened F
+stays below 0.20 on Gemma 4 12B, no prompt wording fixes this, and the fix is architectural.
+
+## handoff_relay.yaml
+
+Hypothesis: the check survives a relayed policy in proportion to how faithfully the rule is
+relayed. Contrasts: verbatim against arm C; paraphrase against verbatim; vague against
+paraphrase. Predictions: verbatim at 1.00 on all models; paraphrase below verbatim by at least
+20 points on Qwen3.5-9B; vague below paraphrase on all models; a monotone dose-response in rule
+fidelity.
+
+## handoff.yaml at n = 100 (handoff_n100.yaml)
+
+Hypothesis: the n = 50 handoff rates are stable. Run on Qwen3.5-9B, Gemma 4 12B and
+Qwen3.8-27B, adding sample indices 50 to 99. Prediction: every cell within 10 points of its
+n = 50 rate. Reported: the pooled n = 100 rates with Wilson intervals, and the two halves
+separately as the noise floor.
+
+## Gemma 4 12B with thinking on (handoff.yaml x gemma-4-12b-think)
+
+Hypothesis: reasoning restores the check when the rule is absent more than it does against an
+assurance. Contrasts: each arm against the same arm with thinking off. Prediction: D rises
+relative to thinking off; F rises less than D.
+
+## Logprob mode on handoff (handoff.yaml logprob)
+
+Hypothesis: the next-call distribution at the decision point predicts the sampled check rate in
+the handoff setting, as it did for the single agent (results section 17). Run on Qwen3.5-9B
+and Qwen3.8-27B. Predictions: p(check first) at the `start` probe tracks the sampled check rate
+within 0.10 in every arm; F on Qwen3.8-27B shows a split near 0.8/0.2 rather than bimodal runs.
+
+## New model families on handoff.yaml
+
+Hypothesis: the handoff pattern holds across families and at larger scale. Runs: Qwen3.5-27B,
+Ministral 3 8B, gpt-oss-120b (low effort) and Gemma 4 31B, thinking off or lowest effort.
+Predictions: Qwen3.5-27B matches Qwen3.8-27B's pattern; Ministral 3 8B shows
+checked_then_acted in B and F; gpt-oss-120b and Gemma 4 31B are the scale cells, and on both D
+and E still fall below 0.50.

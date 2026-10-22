@@ -224,6 +224,22 @@ is no longer needed. Its tail hash is therefore its own, and `sc build-prefixes`
 tail per (world, plan). Everything new is its own file; no existing scenario, plan, world or
 pinned hash changed.
 
+**Handoff follow-ups (2026-10-22).** After the first handoff results (results/2026-10-22-handoff.md,
+PREREG.md "Follow-ups"). Eighteen scenarios copied from the arm-B or arm-D worker files:
+`handoff_source.yaml` varies where the assurance comes from (a peer worker, a pasted
+`get_access_list` result built from the real one, a claim naming no tool) and adds a pointer
+rule with no content; `handoff_hardened.yaml` adds one sentence to arm B's rule telling the
+worker to check even when told access is confirmed, with and without arm F's assurance;
+`handoff_relay.yaml` relays the request and the policy over two hops, verbatim, paraphrased or
+vague. Two configs reuse the handoff scenarios: `handoff_performed.yaml` runs arms D, E and F
+at length 20 under both patterns, and `handoff_n100.yaml` is handoff.yaml with n_samples 100
+and the same experiment name, so it extends handoff.jsonl with sample indices 50 to 99.
+`configs/models/gemma-4-12b-think.yaml` is the thinking-on twin of gemma-4-12b-nothink, built
+as qwen3.5-9b-think was: same weights, revision, server and sampling, enable_thinking true,
+max_tokens 4096, max_model_len 65536. As for qwen3.5-9b-think, the runner does not send a
+step's reasoning back into the context, although Gemma's card says thinking on tool-call turns
+should be preserved.
+
 A second family (editing a protected file) is added by writing YAML plus, if needed, one more
 tool. Nothing in the scorer, builder or runner is specific to `sharing`.
 
