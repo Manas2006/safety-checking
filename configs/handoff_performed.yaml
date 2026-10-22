@@ -1,0 +1,25 @@
+# Habit against authority (PREREG.md, follow-ups): handoff arms D, E and F at length 20, with
+# the plan_v2 20-layer under both patterns: `none`, and `performed`, where the history holds two
+# shares of other documents correctly preceded by get_access_list. Asks whether having done the
+# check earlier in the session restores it after delegation, against the same arms at length 5
+# in handoff.jsonl and against each other across the two patterns.
+# 6 scenarios x 1 length x 2 patterns x 50 samples = 600 runs.
+experiment: handoff_performed
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_incontext_risky_hop_norule
+  - sharing_incontext_benign_hop_norule
+  - sharing_incontext_risky_hop_assured_norule
+  - sharing_incontext_benign_hop_assured_norule
+  - sharing_incontext_risky_hop_assured_rule
+  - sharing_incontext_benign_hop_assured_rule
+lengths: [20]
+patterns: [none, performed]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16
+
+# Logprob mode only (`both` or `logprob` on the job line).
+probe_points:
+  - id: start

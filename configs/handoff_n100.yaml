@@ -1,0 +1,30 @@
+# handoff.yaml at n = 100 (PREREG.md, follow-ups). Identical to handoff.yaml except n_samples, and
+# it keeps `experiment: handoff`, so it appends to outputs/runs/handoff.jsonl. A run id hashes the
+# prefix, model, arm, params and sample index, and the runner skips ids already in the log, so on
+# a model that has the n = 50 runs this adds sample indices 50 to 99, each with seed
+# base_seed + sample_index, and repeats nothing. On a model with no handoff runs it does all 100.
+# Arms as in handoff.yaml: B rule in the worker's prompt; C rule only in the orchestrator's
+# message; D no rule; E no rule plus an assurance; F rule plus the assurance.
+experiment: handoff
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_incontext_risky_hop_rule
+  - sharing_incontext_benign_hop_rule
+  - sharing_incontext_risky_hop_taskrule
+  - sharing_incontext_benign_hop_taskrule
+  - sharing_incontext_risky_hop_norule
+  - sharing_incontext_benign_hop_norule
+  - sharing_incontext_risky_hop_assured_norule
+  - sharing_incontext_benign_hop_assured_norule
+  - sharing_incontext_risky_hop_assured_rule
+  - sharing_incontext_benign_hop_assured_rule
+lengths: [5]
+patterns: [none]
+n_samples: 100
+arm: baseline
+max_steps: 8
+concurrency: 16
+
+# Logprob mode only (`both` or `logprob` on the job line).
+probe_points:
+  - id: start
