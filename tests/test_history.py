@@ -438,6 +438,132 @@ PINNED_PREFIX_HASHES_2X2_VARIANTS = {
 }
 
 
+# The ten handoff arms (configs/handoff.yaml, which runs length 5, pattern none). The system
+# prompt differs from the in-context pair's; the tail is plan_v2's.
+PINNED_PREFIX_HASHES_HANDOFF = {
+    "sharing_incontext_risky_hop_rule": {
+        "none": {
+            5: "105fc50acf297d20d5761870a3488f974fed5984a85e9e6ae46cc826d9d91e30",
+            20: "f2fbaa26a611413f7bb4bc68d35ffa6038cbf452dcfdb56cb0a10145d7a0bd39",
+            50: "c097d3dd948a8812f132ad6646080e7b093d6c8ac1abc5915f6ed92d86dbfc8f",
+        },
+        "performed": {
+            5: "5d1fa027add27b50b460b1968a2db3a07ac059eb051d74c4c4c327b6c3b752df",
+            20: "5f3204f503198baa2af352cc03803f019aee01259f0cbdcba3d92a2dda0391b1",
+            50: "1e18ff7bf6e6f389b730771bf18cbea6cf8b4f04fac11528eb4b7715886204ee",
+        },
+    },
+    "sharing_incontext_benign_hop_rule": {
+        "none": {
+            5: "6e8a877a309c4ff07dfd96d8f93f6ba1c82cd46c7da4e72e5e1bf047709dd926",
+            20: "22f658b956950d7f08b27d1db85e8b779c5bbf77931af44119a092eb0d8cb091",
+            50: "6774d45f470a8de567020d06dff8ac9ba0c94baa611d29332e21ad20cf9016b3",
+        },
+        "performed": {
+            5: "362e46158cfc311cca25c9ab974aae72b47ef733dd4cb678073b34e12ff23660",
+            20: "4ab947f50f283625f3154563a2ebcc64927596b26fea80cc0991db1cabb2c486",
+            50: "156f6bdbea34e45af7495044b0c285862a49d317e5d51a5af18379fdab84bb83",
+        },
+    },
+    "sharing_incontext_risky_hop_taskrule": {
+        "none": {
+            5: "ebe3722f1c889ccf47b1208f89c942f7faf3883868344a42bfbdd7c7e74e5d0f",
+            20: "d0c8fc1afe5f6a71c1f47034eed24dee4502f557a5de0fe33e4b31197d9ee5d8",
+            50: "7acabd52be60348f09d2fa1c5a1c4a777a7c53d0cf4adfffba256e8ee5940d61",
+        },
+        "performed": {
+            5: "df2ff43fd52d8fbed004d0188a3d9a3d8e89575a9bfa584f5b37650c1c65231f",
+            20: "0232630dd321bf0fd45bb98679c2c1086b14bc7b4b37048cac6b304cac8ec94a",
+            50: "a1f37a40af8ff15e3a96b5abea3891ce392f13e300b95d6d44ee1a0cf653c836",
+        },
+    },
+    "sharing_incontext_benign_hop_taskrule": {
+        "none": {
+            5: "d68314a3c4022c5f08aaeffc91b8279b0f9a7f0e9d0b01bc491bdf1f698fdb9f",
+            20: "009006a33c3432558069529a7ea41b786b73edf08d0b6b13db7833e03de5c869",
+            50: "c7e441050c103deddc566a1577612278c0c6b4c43c2e39a33123492eaa53e681",
+        },
+        "performed": {
+            5: "0f2ed5345bacb8f18ca2f811790f4a34572adcb3775a488c87a41179b22463e9",
+            20: "b95c49ae513391b1a8acb3c9ebdfc27b531b45505f4aa15a6a37708924dab10f",
+            50: "62466492f3fcfc7f379b2317d2afdd58a056b464b4601251137aa3dc8cc77da0",
+        },
+    },
+    "sharing_incontext_risky_hop_norule": {
+        "none": {
+            5: "0fba3734ab6539b03276a891214fc920df2a0586858521fb22682f695e284baf",
+            20: "ec7803f8137c0566cf3634117a426addadaa27e35f8da001ea1e61c003858f30",
+            50: "32074342aa7cd9732e34525489df874d767fba1a9a6f7fafa6449c5bc0971657",
+        },
+        "performed": {
+            5: "f3af3b7e9ab0a39722424221f0ee4bbb26e719d8c6f8486722f324e4f17612bf",
+            20: "36ebbd2cba1e6f59f81b05c3ed447f4fe44df22fc938e48432ec32f8b1d94e43",
+            50: "51849942ea5b6abe25528c794ab7e27f9f583a45f4202f8b2e089b1df16b0f00",
+        },
+    },
+    "sharing_incontext_benign_hop_norule": {
+        "none": {
+            5: "2b4f6861de6852a821a8554b773a37b44991512713bf1eddf8bfa4e2187a55ef",
+            20: "354f15207b2a0f0d0908f1ef812ae7b006642413966f71b834170f2af7e9e972",
+            50: "3c5db4163e4fe4aa9a09153ca312402706ec61e2bc3adac7b5e257f994f27b7b",
+        },
+        "performed": {
+            5: "4bbb3ce2fa046421e847741326b0995f0c293fc38a55bd016fae44743540080a",
+            20: "11b07d63a369a7973125c25abc22907289ac15919ddcddf66c96303ac848a05f",
+            50: "867c5a7a68f498bf797fbb7da5144af96c0fe4de43f7cfc09cfbbcc85285db1c",
+        },
+    },
+    "sharing_incontext_risky_hop_assured_norule": {
+        "none": {
+            5: "48962cb4d3d1990b3932126df4bf888ac5736a658d089ddbec7dc46d047018dc",
+            20: "1e4d15dc68cd40b7145ca65f10a015c0935e20d583cf7ab4979bbd8db117595d",
+            50: "ade8a1f14a72e1f67ad19791b6737e8c575142fa4ca165aa014d3c7b63d25d27",
+        },
+        "performed": {
+            5: "e47eea5238d4fc35d0f19948d9de220a7d34140d134e559f3d50bdfce52205cf",
+            20: "be49b786ed76b678e5d29ddd7a6e53bb08e4809a56974246667038e08e41de82",
+            50: "93749dff6bcdc215433d047611597c3470a103c645d966344bdc6a69042527d7",
+        },
+    },
+    "sharing_incontext_benign_hop_assured_norule": {
+        "none": {
+            5: "73d77534061dbcccf0492f6902b52a459ccb66e08b8b0419d6ac2ad03e8c8fda",
+            20: "a04137094b0b27473e6583104e75c8ee958c89c272fc07c1513d745d7dab99f8",
+            50: "015b7d99581d67b86d9b3c16edd1d27c1cb287c41832b733889a2153bd39354f",
+        },
+        "performed": {
+            5: "38b036590f1db40c250db76fb479e8c3b837ef2d9221640859b39a1924141c94",
+            20: "9ccb63c4bf5278d1172da8de6682452e9c5e4af373eb151d45e36acf03342e61",
+            50: "47a1fdb76b66b79c27977d908fe743ebab225ea22ca31d728e5b49423d989809",
+        },
+    },
+    "sharing_incontext_risky_hop_assured_rule": {
+        "none": {
+            5: "098d5bc942dfe2713908fb950595c7c3cdc6b8d61df9c3f32d12a4a54db57d54",
+            20: "3776be7f9d37e1f3f2dd4b054fc662c33385bf88fb567cf65e76bb73a8844e51",
+            50: "025395403b28217f96c3608f46f2fab0854c48e46fc295d7a625bae52d11ac0b",
+        },
+        "performed": {
+            5: "6e1a35abe6bcab29ff7598d16113261c4774b474740f4311cc70687f31933da5",
+            20: "73a5a5ab4313e583da41b1024afb535d92e634b24ffbbb715fc51ba250adede7",
+            50: "be2b53695279f12777e16b95ac28fda64e06d91bfa2ec3e8a15350ab997cd548",
+        },
+    },
+    "sharing_incontext_benign_hop_assured_rule": {
+        "none": {
+            5: "03ad21014f3a9b11ace89409aea3a61a4b42bd08ae2a101e8001099d8d52635e",
+            20: "835ef3d6d9b4f24c165b4e7f8df201546724656678d4a93d78613fbd564b5f0f",
+            50: "9fbec0f8c3e30ec328d601b2c36b78b8edb2bf6b3c161dac7cb767cfc0173692",
+        },
+        "performed": {
+            5: "5cf9cb70ce4109857168320746caa68f8f34b7cebbeb298e141da4bb4af46de1",
+            20: "5e67797d9b217e78bc3343164bdee955d970622c20f6f0cf8de0f3d189ea1c8c",
+            50: "f2694902fd650894557b477c2ebea4841f1701168f5f9a289f86cf4592fac72b",
+        },
+    },
+}
+
+
 @pytest.mark.parametrize(
     ("pinned", "tail_hash"),
     [
@@ -445,8 +571,9 @@ PINNED_PREFIX_HASHES_2X2_VARIANTS = {
         (PINNED_PREFIX_HASHES_V2, PINNED_TAIL_HASH_V2),
         (PINNED_PREFIX_HASHES_RULES, PINNED_TAIL_HASH),
         (PINNED_PREFIX_HASHES_2X2_VARIANTS, PINNED_TAIL_HASH_V2),
+        (PINNED_PREFIX_HASHES_HANDOFF, PINNED_TAIL_HASH_V2),
     ],
-    ids=["plan", "plan_v2", "rules", "2x2_variants"],
+    ids=["plan", "plan_v2", "rules", "2x2_variants", "handoff"],
 )
 def test_prefix_hashes_are_pinned(pinned, tail_hash) -> None:
     built: dict[str, dict[str, dict[int, str]]] = {}
