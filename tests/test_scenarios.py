@@ -48,6 +48,8 @@ HANDOFF_ARMS = {
 HANDOFF = {f"{s}_{suffix}" for s in IN_CONTEXT_PAIR for suffix in HANDOFF_ARMS.values()}
 #: the in-context pair with a competing instruction at the decision point (configs/competing.yaml)
 COMPETING = {f"{s}_{k}" for s in IN_CONTEXT_PAIR for k in ("userclaim", "vague", "bundle")}
+#: the in-context pair on plan_v2_unchecked (configs/precedent.yaml)
+PRECEDENT = {f"{s}_precedent" for s in IN_CONTEXT_PAIR}
 
 
 def test_every_scenario_loads_and_validates() -> None:
@@ -63,6 +65,7 @@ def test_every_scenario_loads_and_validates() -> None:
         *RULE_POSITION_2X2,
         *HANDOFF,
         *COMPETING,
+        *PRECEDENT,
     }
 
 
@@ -71,6 +74,7 @@ def test_plan_variant_scenarios_differ_from_their_bases_only_in_the_plan() -> No
         **{s: load_scenario(s.removesuffix("_long")).plan_ref + "_long" for s in LONG_HORIZON},
         **{s: "plan_v2_repeat" for s in REPEATED},
         **INGREDIENTS,
+        **{s: "plan_v2_unchecked" for s in PRECEDENT},
     }
     for scenario_id, plan_ref in expected_plan.items():
         base_id = scenario_id.rpartition("_")[0]

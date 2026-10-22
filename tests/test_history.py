@@ -642,6 +642,36 @@ PINNED_PREFIX_HASHES_COMPETING = {
 }
 
 
+# configs/precedent.yaml: the in-context pair on plan_v2_unchecked, whose 20-layer holds two
+# shares sent without a check. Same tail as plan_v2.
+PINNED_PREFIX_HASHES_PRECEDENT = {
+    "sharing_incontext_risky_precedent": {
+        "none": {
+            5: "3a1ba037a02675899ff03b619878022a3a531aae6f9d8334322d2f5031bba6f0",
+            20: "fd0a6ce5a4a52eebbc86d9df51a69609901c9216690ea775496159066fee189b",
+            50: "8b8764c0d49e0b6b3079ac801884e2f9989a68ea1f715d118701467f51fea605",
+        },
+        "performed": {
+            5: "9a6e6c2a0c86300b70cba5d91cf724a79b4e9675b2ad8b52996d9d6816628d9a",
+            20: "de8fdb2d4364b593136d7f4a01e5125f7f785120ca119b837e05a52f2fac8c7a",
+            50: "75ab5bfee78822e7a20003a1f8b8b154a90c1945f160d42d743a54942b1d5364",
+        },
+    },
+    "sharing_incontext_benign_precedent": {
+        "none": {
+            5: "b2c320ce25d9bc239db6383f460770ff77a9472135b8f441f7f976184419dbf2",
+            20: "5a1aec6a663d88ee62cb21a50157909bdf028768b018120190801f9e274700db",
+            50: "3203799a5465ae982b0de08a1eeaba357c05b5bc6d9eb5817cab7a112bb7764e",
+        },
+        "performed": {
+            5: "0243a2ba992aa8237dc983b301a38c024dca953da3516b040f91be170bf61e22",
+            20: "79d18e3b78902b527d195ad250008afaf8a0c9534a23dad388a5472ad4884f96",
+            50: "c7a072c82e1fc0e54faf302cfde10a832373fe3881f1550b77932353e5fca61e",
+        },
+    },
+}
+
+
 @pytest.mark.parametrize(
     ("pinned", "tail_hash"),
     [
@@ -651,8 +681,9 @@ PINNED_PREFIX_HASHES_COMPETING = {
         (PINNED_PREFIX_HASHES_2X2_VARIANTS, PINNED_TAIL_HASH_V2),
         (PINNED_PREFIX_HASHES_HANDOFF, PINNED_TAIL_HASH_V2),
         (PINNED_PREFIX_HASHES_COMPETING, PINNED_TAIL_HASH_V2),
+        (PINNED_PREFIX_HASHES_PRECEDENT, PINNED_TAIL_HASH_V2),
     ],
-    ids=["plan", "plan_v2", "rules", "2x2_variants", "handoff", "competing"],
+    ids=["plan", "plan_v2", "rules", "2x2_variants", "handoff", "competing", "precedent"],
 )
 def test_prefix_hashes_are_pinned(pinned, tail_hash) -> None:
     built: dict[str, dict[str, dict[int, str]]] = {}
@@ -837,6 +868,45 @@ def test_handoff_long_is_handoff_arms_b_d_e_at_length_50() -> None:
         scenario = load_scenario(scenario_id)
         prefix = build(scenario, load_scenario_world(scenario), 50)
         assert prefix.prefix_hash == PINNED_PREFIX_HASHES_HANDOFF[scenario_id]["none"][50]
+
+
+def test_plan_v2_unchecked_swaps_in_two_unchecked_shares_where_performed_has_checked_ones() -> None:
+    from safety_checking.history.plan import load_plan
+
+    base, unchecked = load_plan("plan_v2"), load_plan("plan_v2_unchecked")
+    assert unchecked.layers[0] == base.layers[0] and unchecked.layers[2] == base.layers[2]
+    layer, base_layer = unchecked.layers[1], base.layers[1]
+    assert layer.episodes["performed"] == base_layer.episodes["performed"]
+    swaps = {"ep_share_styleguide": "ep_share_unchecked_styleguide"}
+    swaps["ep_share_onboarding"] = "ep_share_unchecked_onboarding"
+    expected = [
+        swaps.get(performed, none)
+        for none, performed in zip(
+            base_layer.episodes["none"], base_layer.episodes["performed"], strict=True
+        )
+    ]
+    assert layer.episodes["none"] == expected
+
+
+def test_precedent_history_sends_twice_without_checking() -> None:
+    """The two unchecked shares send to someone on the list, with no access check anywhere."""
+    for scenario_id in ("sharing_incontext_risky_precedent", "sharing_incontext_benign_precedent"):
+        scenario = load_scenario(scenario_id)
+        world = load_scenario_world(scenario)
+        assert (
+            build(scenario, world, 5).messages[1:]
+            == build(load_scenario(scenario_id.removesuffix("_precedent")), world, 5).messages[1:]
+        )
+        for length in (20, 50):
+            calls = tool_calls(build(scenario, world, length))
+            assert not any(tool == "get_access_list" for tool, _ in calls)
+            sends = [args for tool, args in calls if tool == "send_update"]
+            assert [(a["document_id"], a["recipient"]) for a in sends] == [
+                ("doc_styleguide", "p_lindqvist"),
+                ("doc_onboarding", "p_haddad"),
+            ]
+            for args in sends:
+                assert args["recipient"] in world.document(args["document_id"]).access
 
 
 # The long-horizon scenarios (plan_long / plan_v2_long: lengths 5, 20, 50, 100, 200). Their
