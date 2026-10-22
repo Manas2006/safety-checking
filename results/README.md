@@ -32,22 +32,63 @@ Rerun it after a job lands, then commit the tables with the write-up that quotes
   performed pattern, a repeated-episode control, the ingredient experiment, Ministral's
   check-then-send failure, and the logprob validation.
 
+- [2026-10-22: handoff check rates and outcomes](2026-10-22-handoff.md), with transcripts in
+  `transcripts/handoff-2026-10-22.md`. Tables only, no interpretation yet.
+
 `tables/logprob_validation.csv` compares the 200-sample validation run with the logprob
 predictions; the export script writes it whenever `gate_neutral.jsonl` exists.
 
 ## What is still running
 
-`configs/handoff.yaml` (the handoff arms, PREREG.md) is queued on Qwen3.5-9B, Gemma 4 12B and
-Qwen3.8-27B.
-`configs/handoff.yaml` is also queued on gpt-oss-20b (low effort) and Qwen3.5-9B with thinking on.
-`configs/competing.yaml` (user claim, vague rule, bundled request) is queued on three models.
-`configs/override.yaml` (user tells the agent to skip the check) is queued on three models.
-`configs/urgency.yaml` (control for override) is queued on Qwen3.5-9B and Gemma 4 12B.
-`configs/handoff_long.yaml` (handoff arms B, D, E at length 50) is queued on Qwen3.5-9B.
-`configs/contrast2_ingredients.yaml` is queued on Gemma 4 12B and Qwen3.8-27B.
-`configs/precedent.yaml` (unchecked shares in the history) is queued on Qwen3.5-9B and Gemma 4 12B.
-`configs/inject.yaml` (injected note in the Atlas update) is queued on Qwen3.5-9B and Gemma 4 12B.
+Submitted 2026-10-21 and 2026-10-22, all charged to ECS26006 with `-t 02:00:00`. Jobs that
+write the same log run in one serial `afterany` chain; `pos` is the position in that chain.
 
-Nothing, as of 2026-09-22 morning. Not yet run: Gemma 4 31B (its smoke job died with a node
-failure during server start) and a second look at Ministral 3 14B (13 of 30 smoke runs had
-tool-call parse failures).
+```bash
+sacct -u manasp123 -S 2026-10-21 -o JobID,JobName%34,State,Elapsed,Start
+```
+
+| job | config | mode | model | partition | log | pos | after |
+|---|---|---|---|---|---|---|---|
+| 3527562 | `handoff.yaml` | run | gpt-oss-20b-low | gpu-a100 | `handoff.jsonl` | 1 | 3527551-3 (done) |
+| 3527563 | `handoff.yaml` | run | qwen3.5-9b-think | gpu-a100 | `handoff.jsonl` | 2 | 3527562 |
+| 3528647 | `handoff.yaml` | run | gemma-4-12b-think | gpu-a100 | `handoff.jsonl` | 3 | 3527563 |
+| 3528648 | `handoff.yaml` | run | qwen3.5-27b-nothink | gpu-a100 | `handoff.jsonl` | 4 | 3528647 |
+| 3528649 | `handoff.yaml` | run | ministral-3-8b | gpu-a100 | `handoff.jsonl` | 5 | 3528648 |
+| 3528650 | `handoff_n100.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `handoff.jsonl` | 6 | 3528649 |
+| 3528651 | `handoff_n100.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `handoff.jsonl` | 7 | 3528650 |
+| 3528652 | `handoff_n100.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `handoff.jsonl` | 8 | 3528651 |
+| 3528653 | `handoff.yaml` | run | gpt-oss-120b-low | gpu-h100 | `handoff.jsonl` | 9 | 3528652 |
+| 3528654 | `handoff.yaml` | run | gemma-4-31b-nothink | gpu-h100 | `handoff.jsonl` | 10 | 3528653 |
+| 3527564 | `competing.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `competing.jsonl` | 1 | none |
+| 3527565 | `competing.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `competing.jsonl` | 2 | 3527564 |
+| 3527566 | `competing.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `competing.jsonl` | 3 | 3527565 |
+| 3527567 | `override.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `override.jsonl` | 1 | none |
+| 3527568 | `override.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `override.jsonl` | 2 | 3527567 |
+| 3527569 | `override.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `override.jsonl` | 3 | 3527568 |
+| 3527570 | `urgency.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `urgency.jsonl` | 1 | none |
+| 3527571 | `urgency.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `urgency.jsonl` | 2 | 3527570 |
+| 3527572 | `handoff_long.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `handoff_long.jsonl` | 1 | none |
+| 3527573 | `contrast2_ingredients.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `contrast2_ingredients.jsonl` | 1 | none |
+| 3527574 | `contrast2_ingredients.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `contrast2_ingredients.jsonl` | 2 | 3527573 |
+| 3527575 | `precedent.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `precedent.jsonl` | 1 | none |
+| 3527576 | `precedent.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `precedent.jsonl` | 2 | 3527575 |
+| 3527577 | `inject.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `inject.jsonl` | 1 | none |
+| 3527578 | `inject.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `inject.jsonl` | 2 | 3527577 |
+| 3528655 | `handoff.yaml` | logprob | qwen3.5-9b-nothink | gpu-a100 | `handoff.logprob.jsonl` | 1 | none |
+| 3528656 | `handoff.yaml` | logprob | qwen3.8-27b-nothink | gpu-a100 | `handoff.logprob.jsonl` | 2 | 3528655 |
+| 3528657 | `handoff_performed.yaml` | run | qwen3.5-9b-nothink | gpu-a100-dev | `handoff_performed.jsonl` | 1 | none |
+| 3528658 | `handoff_performed.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `handoff_performed.jsonl` | 2 | 3528657 |
+| 3528659 | `handoff_performed.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `handoff_performed.jsonl` | 3 | 3528658 |
+| 3528660 | `handoff_source.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `handoff_source.jsonl` | 1 | none |
+| 3528661 | `handoff_source.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `handoff_source.jsonl` | 2 | 3528660 |
+| 3528662 | `handoff_source.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `handoff_source.jsonl` | 3 | 3528661 |
+| 3528663 | `handoff_hardened.yaml` | run | qwen3.5-9b-nothink | gpu-a100-dev | `handoff_hardened.jsonl` | 1 | none |
+| 3528664 | `handoff_hardened.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `handoff_hardened.jsonl` | 2 | 3528663 |
+| 3528665 | `handoff_hardened.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `handoff_hardened.jsonl` | 3 | 3528664 |
+
+Not submitted: `handoff_relay.yaml` on qwen3.5-9b-nothink, gemma-4-12b-nothink and
+qwen3.8-27b-nothink (one chain into `handoff_relay.jsonl`). The gpu-a100 queue allows 32
+submitted jobs per user and was full on 2026-10-22; it goes in when slots free.
+
+Done: handoff.yaml on Qwen3.5-9B, Gemma 4 12B and Qwen3.8-27B (3527551 to 3527553),
+[2026-10-22-handoff.md](2026-10-22-handoff.md).
