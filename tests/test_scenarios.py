@@ -37,6 +37,15 @@ INGREDIENTS = {
 }
 #: the in-context pair with the access-list rule first or fourth
 RULE_POSITION_2X2 = {f"{s}_{k}" for s in IN_CONTEXT_PAIR for k in ("rule1", "rule4")}
+#: the in-context pair with the request relayed by a scripted orchestrator, by arm letter
+HANDOFF_ARMS = {
+    "B": "hop_rule",
+    "C": "hop_taskrule",
+    "D": "hop_norule",
+    "E": "hop_assured_norule",
+    "F": "hop_assured_rule",
+}
+HANDOFF = {f"{s}_{suffix}" for s in IN_CONTEXT_PAIR for suffix in HANDOFF_ARMS.values()}
 
 
 def test_every_scenario_loads_and_validates() -> None:
@@ -50,6 +59,7 @@ def test_every_scenario_loads_and_validates() -> None:
         *REPEATED,
         *INGREDIENTS,
         *RULE_POSITION_2X2,
+        *HANDOFF,
     }
 
 
