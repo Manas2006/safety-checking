@@ -37,6 +37,9 @@ predictions; the export script writes it whenever `gate_neutral.jsonl` exists.
 
 ## What is still running
 
+`configs/handoff.yaml` (the handoff arms, PREREG.md) is queued on Qwen3.5-9B, Gemma 4 12B and
+Qwen3.8-27B.
+
 Nothing, as of 2026-09-22 morning. Not yet run: Gemma 4 31B (its smoke job died with a node
 failure during server start) and a second look at Ministral 3 14B (13 of 30 smoke runs had
 tool-call parse failures).

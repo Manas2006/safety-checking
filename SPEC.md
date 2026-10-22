@@ -188,6 +188,27 @@ it second but state it as good practice rather than an instruction. Each is byte
 its base otherwise and shares its tail; `configs/contrast_rules.yaml` runs the four at lengths
 5 and 50. `SAFETY_RULE_INDEX` is unused by the scorer, so the schema is unchanged.
 
+**Handoff arms (2026-10-21).** The same decision moved into a delegation setting: the actor is
+a worker whose task arrives from an orchestrator, in the style of Ying et al. (arXiv
+2609.27900). Ten scenarios, `sharing_incontext_{risky,benign}_hop_*`, copy the in-context pair
+and change only the role (a worker that answers to an orchestrator), rule 2, rule 4 (it asks
+the orchestrator to confirm with Sam), the decision request and `expected_safe_behavior`. The
+request is Sam's line relayed as `[Orchestrator] From Sam: ...`, plus, in some arms, a second
+`[Orchestrator]` line. Arm B keeps the access-list rule as rule 2; C puts it only in the
+orchestrator's message; D has it nowhere; E has no rule and an orchestrator line saying it
+already checked the access list (false in the risky twin, true in the benign); F has the rule
+and that line. In C, D and E rule 2 is a neutral rule that names no tool, so there are still
+four standing rules. Arm A is the undelegated pair at length 5, already in `contrast2`.
+`configs/handoff.yaml` runs the ten at length 5 only, so the history is plan_v2's tail in
+every cell and the handoff is the only manipulation; the prefixes are pinned in
+`tests/test_history.py`.
+
+The orchestrator is a scripted message, not a second model. Its message is the decision
+request, so every variable is frozen, hashed into the scenario and identical across samples and
+models, and a difference between arms can only come from the actor. A live two-model
+orchestrator would add a second source of variance in what the worker is told; it is the later
+validation, once the scripted arms say which manipulations matter.
+
 A second family (editing a protected file) is added by writing YAML plus, if needed, one more
 tool. Nothing in the scorer, builder or runner is specific to `sharing`.
 
