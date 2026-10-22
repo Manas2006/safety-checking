@@ -760,6 +760,69 @@ def test_reminder_arm_prefixes_are_pinned_and_nested() -> None:
         assert check_nesting(prefixes).suffix_ok
 
 
+# override.yaml and urgency.yaml: one user message at backwards index 2, the first call of
+# ep_tail_atlas_recap, in the in-context pair at length 5.
+PINNED_INSERT_ARMS = {
+    "override": (
+        "ecc85d6bd9c3",
+        {
+            "sharing_incontext_risky": {
+                5: "ca157559917c79e19f3dcbe38b60400af967facd61434b71cfb8e438e4f98ca0",
+            },
+            "sharing_incontext_benign": {
+                5: "b8504984d09c3f684c0049ad8b0afc72703a6ddb49a15b01182b01ff037b5fdd",
+            },
+        },
+    ),
+    "urgency": (
+        "409b233dbcd7",
+        {
+            "sharing_incontext_risky": {
+                5: "93f8a6e625ee77fc060d7c70b0fb525f031833ba126be818c4abfd763669b822",
+            },
+            "sharing_incontext_benign": {
+                5: "584fcbcd5262f6bda152e3fe54bd9d1363df0231658114ed429955fde98fc05a",
+            },
+        },
+    ),
+}
+
+
+@pytest.mark.parametrize("name", sorted(PINNED_INSERT_ARMS))
+def test_insert_arm_prefixes_are_pinned_and_placed_before_the_recap(name) -> None:
+    from safety_checking.config import load_experiment_config
+    from safety_checking.runner.experiment import ExperimentSpec, build_cells
+
+    experiment, _ = load_experiment_config(f"configs/{name}.yaml")
+    assert list(experiment.inserts) == [2] and experiment.arm != "baseline"
+    assert experiment.lengths == [5]
+    assert experiment.scenarios == ["sharing_incontext_risky", "sharing_incontext_benign"]
+    message = experiment.inserts[2][0]
+    assert message["role"] == "user"
+    if name == "urgency":
+        assert "skip" not in message["content"] and "access" not in message["content"]
+    spec = ExperimentSpec(
+        experiment=experiment.experiment,
+        scenarios=experiment.scenarios,
+        lengths=experiment.lengths,
+        inserts=experiment.inserts,
+    )
+    tail_hash, pinned = PINNED_INSERT_ARMS[name]
+    built = {}
+    for cell in build_cells(spec, save=False):
+        prefix = cell.prefix
+        assert prefix.metadata.tail_hash.startswith(tail_hash)
+        index = prefix.messages.index(message)
+        # after the recap's own request, before its first call; nothing else moves
+        assert prefix.messages[index - 1]["content"].startswith("Before I forget, remind me")
+        assert prefix.messages[index + 1]["tool_calls"][0]["id"] == "call_r002"
+        assert prefix.messages[index + 1]["tool_calls"][0]["function"]["name"] == "search_documents"
+        plain = build(cell.scenario, load_scenario_world(cell.scenario), 5)
+        assert prefix.messages[:index] + prefix.messages[index + 1 :] == plain.messages
+        built[cell.scenario.id] = {prefix.length: prefix.prefix_hash}
+    assert built == pinned
+
+
 # The long-horizon scenarios (plan_long / plan_v2_long: lengths 5, 20, 50, 100, 200). Their
 # histories up to 50 are the bases' messages; the two new layers are pinned here.
 LONG_LENGTHS = [5, 20, 50, 100, 200]
