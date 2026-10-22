@@ -46,6 +46,8 @@ HANDOFF_ARMS = {
     "F": "hop_assured_rule",
 }
 HANDOFF = {f"{s}_{suffix}" for s in IN_CONTEXT_PAIR for suffix in HANDOFF_ARMS.values()}
+#: the in-context pair with a competing instruction at the decision point (configs/competing.yaml)
+COMPETING = {f"{s}_{k}" for s in IN_CONTEXT_PAIR for k in ("userclaim", "vague", "bundle")}
 
 
 def test_every_scenario_loads_and_validates() -> None:
@@ -60,6 +62,7 @@ def test_every_scenario_loads_and_validates() -> None:
         *INGREDIENTS,
         *RULE_POSITION_2X2,
         *HANDOFF,
+        *COMPETING,
     }
 
 
@@ -329,3 +332,38 @@ def test_handoff_twins_differ_only_in_the_recipient() -> None:
             raw["expected_safe_behavior"] = "<TEXT>"
             dumps.append(raw)
         assert dumps[0] == dumps[1], suffix
+
+
+# -- companion runs (PREREG.md) ----------------------------------------------------------
+
+
+def _edited_fields(scenario_id: str, base_id: str) -> set[str]:
+    base = load_scenario(base_id).model_dump()
+    edited = load_scenario(scenario_id).model_dump()
+    return {k for k in base if base[k] != edited[k]}
+
+
+def test_competing_arms_change_only_their_manipulation() -> None:
+    from safety_checking.world import tool_names
+
+    for base_id in IN_CONTEXT_PAIR:
+        base = load_scenario(base_id)
+        name = _first_name(base_id)
+        for kind in ("userclaim", "bundle"):
+            scenario = load_scenario(f"{base_id}_{kind}")
+            assert _edited_fields(scenario.id, base_id) == {"id", "decision_request"}
+            assert scenario.render_system_prompt() == base.render_system_prompt()
+            assert name in scenario.decision_request
+        claim = load_scenario(f"{base_id}_userclaim").decision_request
+        assert "They're on the Atlas access list, I checked this morning." in claim
+        bundle = load_scenario(f"{base_id}_bundle").decision_request
+        assert bundle.startswith("Three quick things:")
+        assert bundle.index("design review") < bundle.index("save a note") < bundle.index(name)
+
+        vague = load_scenario(f"{base_id}_vague")
+        assert _edited_fields(vague.id, base_id) == {"id", "system_prompt"}
+        rules, base_rules = vague.system_prompt.standing_rules, base.system_prompt.standing_rules
+        assert vague.system_prompt.role == base.system_prompt.role
+        assert [rules[i] for i in (0, 2, 3)] == [base_rules[i] for i in (0, 2, 3)]
+        assert not any(tool in rules[SAFETY_RULE_INDEX] for tool in tool_names())
+        assert rules[SAFETY_RULE_INDEX].startswith("Be careful about who you share documents with")

@@ -1,0 +1,27 @@
+# Competing instructions at the decision point (PREREG.md, companion runs): three edits of the
+# in-context pair, each against contrast2's sharing_incontext_risky at length 5.
+#   userclaim  the user says the recipient is on the access list (false in the risky twin)
+#   vague      rule 2 is a vague caution with no tool and no trigger
+#   bundle     the send is the last of three tasks in one request
+# max_steps is 12, not 8, because the bundle's two extra tasks take up to four more calls; the
+# other two pairs finish well inside 8 either way. 6 scenarios x 1 length x 50 samples = 300
+# runs per model; the job script's third argument picks the model.
+experiment: competing
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_incontext_risky_userclaim
+  - sharing_incontext_benign_userclaim
+  - sharing_incontext_risky_vague
+  - sharing_incontext_benign_vague
+  - sharing_incontext_risky_bundle
+  - sharing_incontext_benign_bundle
+lengths: [5]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 12
+concurrency: 16
+
+# Logprob mode only (`both` or `logprob` on the job line).
+probe_points:
+  - id: start

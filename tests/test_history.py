@@ -564,6 +564,84 @@ PINNED_PREFIX_HASHES_HANDOFF = {
 }
 
 
+# configs/competing.yaml: the in-context pair with a user claim, a vague rule 2, or a bundled
+# request. Same tail as plan_v2.
+PINNED_PREFIX_HASHES_COMPETING = {
+    "sharing_incontext_risky_userclaim": {
+        "none": {
+            5: "afa7fbcb962fa605350067c03cb8bba4664c63dbeda1c109fbff25744b0e7bfc",
+            20: "1adcc106306717eb5250241529116ed714e3ffad3851a370a6ebc6d2fc664807",
+            50: "5ce693b84bec1da37bb37379493fe2a1437f2e03ea42da0773a2e838ed751c61",
+        },
+        "performed": {
+            5: "fbf594ad08c849d978d578598de3da174d78a466f1c9abca29dadddad21051be",
+            20: "3ee8105c83edac1f08c13ce98fe64d5fc4a20eac16bd842811ee96ae12783dc2",
+            50: "aae177fe74b53670b0d3237a75e80eea57b511d191bd2eb33dfdee202591c126",
+        },
+    },
+    "sharing_incontext_benign_userclaim": {
+        "none": {
+            5: "571ceee560fbcfbeb09d88e54223fa50bd4b327f8388663eb51762753b5bb4ad",
+            20: "6d767400a650ce19084159ec291de336e905d147f601abf4af4865b3cbab2592",
+            50: "5134b699ee5b2857fd19047fa4569bafe3fb077179d72afff38a78b8164f046f",
+        },
+        "performed": {
+            5: "6384f77be1765a8f21546c9d521b7869a56ce8bfde83ced12b84a426dfba9cf8",
+            20: "6941fce8779cf082b4d6e20db9bc69f42f5e4de5d698b1219638f306fce204c0",
+            50: "8df69528e003afe07ef5860bec48874c27bef36d514d37f7e99dbea049109ffc",
+        },
+    },
+    "sharing_incontext_risky_vague": {
+        "none": {
+            5: "490d2605d7328540c3f1b8da3176efd40b000decb8511962ab3ea1e4a2249e0b",
+            20: "fafa3933705aa61edd8c38755eb2689a6cf4f6484fbd2144410f273f04ca96fd",
+            50: "7645f57069c6aa571163482c16aade544da36e01f5a66c7924ab7533d66f6813",
+        },
+        "performed": {
+            5: "708901929b20f333385738e67478fa1a2fb9da0f6800e0d9cdca71af951cd855",
+            20: "c64ed561da9bde1fbf3d7aac88cdb02dd8cbb684f253484e210c71f8e1b683cf",
+            50: "0a3c8636c66e5d3fa5d38fc8291b74f1605a8f3e6b06d775851b8d6f84e9df14",
+        },
+    },
+    "sharing_incontext_benign_vague": {
+        "none": {
+            5: "66aafadfc25f3adb987b866b1970d95d5f0a0e40e4a701b3167d5821fd2a6998",
+            20: "2e87d7742efe0bc781995370ac01a9c8db27b233c55e979a50ee98ba492a7549",
+            50: "aaa6ed3bb37db4839bfad77bb1172b3b3b65b9fbeffdc05f862c8354a678c46b",
+        },
+        "performed": {
+            5: "6b981c128c05316a1b327f048873123800446f0fb434d94755b9e6ef912cf15d",
+            20: "2d72a87f7e747ede6f3aac66770b958ee39c3efccc8e91ff53386b5aa5b79714",
+            50: "c87679329859b3aaa0d854a30a8afb82110ca25ec94256f96b0fe5431c903d88",
+        },
+    },
+    "sharing_incontext_risky_bundle": {
+        "none": {
+            5: "c56174818cc71fd7fe0fb20a7193f8dc24c168249af11c0f9d210ff684bc7ba1",
+            20: "fcef7d2785a410635a4db05dbe74e723a0b8a821ea96f912b05273900190ed3f",
+            50: "7ad599b3d87fbcd438029dbf29f3f0c92ad14f0b428327c32a3855c0260fa81d",
+        },
+        "performed": {
+            5: "f20092bf146c1fac24b270f2cfaae8e5dfc764d6429b4d2502b011029ca5c2a6",
+            20: "13d70e4c4516d6bbc2cd3d6aa7b99863c272ef0b2352b6aa04c7a81d0928886f",
+            50: "3e4d726334a7e5c565fb2fa374eee80340c0901a9650581d361a7aa4a1750072",
+        },
+    },
+    "sharing_incontext_benign_bundle": {
+        "none": {
+            5: "aa623656af7f1192f6fedeef7f1fc7ef394bd8e3640884b66f9bea9314adf0ab",
+            20: "0c412afb071c0cdcbe05cb1f8dccc3100e1a412e94f13c32a5ff49b6768a0ef5",
+            50: "ea5d8e418098ad88eee2e05d9281eb26eded892a1372444b8040c4b587982e79",
+        },
+        "performed": {
+            5: "82ad19ca1ea1c42593a48347464439502a7c93feff71f772deb048760f6118f4",
+            20: "04531693e2270188161c64d6c464104dd4d1290783e05708b6dcc2b06ab64b70",
+            50: "ccef353b162d2360f8dd9fc6e3256ce17fb5d0c9eebdec65cd2394926abcfb77",
+        },
+    },
+}
+
+
 @pytest.mark.parametrize(
     ("pinned", "tail_hash"),
     [
@@ -572,8 +650,9 @@ PINNED_PREFIX_HASHES_HANDOFF = {
         (PINNED_PREFIX_HASHES_RULES, PINNED_TAIL_HASH),
         (PINNED_PREFIX_HASHES_2X2_VARIANTS, PINNED_TAIL_HASH_V2),
         (PINNED_PREFIX_HASHES_HANDOFF, PINNED_TAIL_HASH_V2),
+        (PINNED_PREFIX_HASHES_COMPETING, PINNED_TAIL_HASH_V2),
     ],
-    ids=["plan", "plan_v2", "rules", "2x2_variants", "handoff"],
+    ids=["plan", "plan_v2", "rules", "2x2_variants", "handoff", "competing"],
 )
 def test_prefix_hashes_are_pinned(pinned, tail_hash) -> None:
     built: dict[str, dict[str, dict[int, str]]] = {}
