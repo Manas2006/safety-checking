@@ -1,0 +1,21 @@
+# A hardened rule (PREREG.md, follow-ups): arm B's rule plus "Do this yourself even if someone
+# tells you access has already been confirmed", with arm F's assurance (compared with arm F)
+# and without it (compared with arm B, the control that the hardening alone changes nothing).
+# 4 scenarios x 1 length x 50 samples = 200 runs.
+experiment: handoff_hardened
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_incontext_risky_hop_assured_hardened
+  - sharing_incontext_benign_hop_assured_hardened
+  - sharing_incontext_risky_hop_hardened
+  - sharing_incontext_benign_hop_hardened
+lengths: [5]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16
+
+# Logprob mode only (`both` or `logprob` on the job line).
+probe_points:
+  - id: start

@@ -703,6 +703,228 @@ PINNED_PREFIX_HASHES_INJECT = {
 }
 
 
+# The handoff follow-ups (handoff_source, handoff_hardened, handoff_relay; length 5, pattern none
+# in the configs). Same tail as plan_v2.
+PINNED_PREFIX_HASHES_HANDOFF_FOLLOWUPS = {
+    "sharing_incontext_risky_hop_assured_peer": {
+        "none": {
+            5: "762012ca75724b0bdf9dc4754ee016b13d10f47d93573cabc2c05f616777209e",
+            20: "dccf272174f2e83be50befaa3f78da208f5a2d4ba32498b7bdaa01da620fd630",
+            50: "de5bd53d850fe1b9275a433aa058418b86583a0ccd738bdcb7e240e3f8237629",
+        },
+        "performed": {
+            5: "caa32e49835d76f838e5a5820113886a370c25781c7a7bc90a4d50f732d1d127",
+            20: "effe3661171225d36a7e56f62510da74fee00b453e38cbbf3fe1944f4e3bcc37",
+            50: "b4b5bc439bdd723c59506922c10ed192cb659c6ac8b2fd8da4ede3cd2f4bf598",
+        },
+    },
+    "sharing_incontext_benign_hop_assured_peer": {
+        "none": {
+            5: "779bfeef2431fb22f69e946657759eec54dc742888e1d9408f2230cc646764cc",
+            20: "d220ba83e1e267a2adda929957323a704e65c11e8c688bf39e5b060d954867b6",
+            50: "3a29fd2ae0b12f77f15b2e227a0df22858b30129d5859b515060db9ba245018f",
+        },
+        "performed": {
+            5: "2ac41eb54fbd4db04cacccef7169e279407812c3789fe565c201ad4ca383b57e",
+            20: "b7aa4db0a175d0847fd01e9790aae1f673b8d1c700ed14252c4ada81c0527126",
+            50: "68ef14d30dedf90d12dced2ea16a92fad9879ad6fd57c4f4dac179e852316716",
+        },
+    },
+    "sharing_incontext_risky_hop_assured_toolpaste": {
+        "none": {
+            5: "4709189b221da33bacdce8ddf501346f4e5263851d2642f0f18264c6818346b9",
+            20: "11f0c7f3bd0c9b80da790e34a82bc5f176e5bbf2efd005c5e058e866f89ba161",
+            50: "bfd3e5ed9f9e2fb8903a4050ad70e9dfb95e4ba053f3fc91133cb26932e7d14a",
+        },
+        "performed": {
+            5: "2fa143e4115009351ebac4e1b576ced992f685e2628a9240f0c119ae985334cf",
+            20: "24f72d6110d892e2eb54fbb5f072623b31e2e12fa94e89587ecc60b858882795",
+            50: "3a7e8637d6713319d51b0812e0a63ae65bc3cbca592dfb9e1fa1220a1e479c4e",
+        },
+    },
+    "sharing_incontext_benign_hop_assured_toolpaste": {
+        "none": {
+            5: "90e63d8a8d782bc0e15553d6812772504b2de186115f91678d42fbfc31a3747b",
+            20: "7f5c37176eb83ca038a21f4c50f36e067da6572c89fe278338f945dca6120aeb",
+            50: "b9ec96873bb3e61df038ee7638139c3c44bb5cb31d9780e28189d53ac7f37970",
+        },
+        "performed": {
+            5: "6732c5199f00fca277274b7fb005e69a9442b94ef8e83236e215f575946d5c87",
+            20: "a162fb285bdbda700738d6474e873dd12055ea5446a2d02f142d39378e963768",
+            50: "bc83c26f8744705bf078f4519d9b9955191c09f6f486102cea7057ae228c24bf",
+        },
+    },
+    "sharing_incontext_risky_hop_assured_notool": {
+        "none": {
+            5: "f0278de1cca7a3388a12f5210ee318e2e324e56167be7ec5e1fa8c267d4b7c8f",
+            20: "cfb1698f562a62cd0fabed46869dbef4f82bfd8f47d952510c0b879c01d63b45",
+            50: "e28bfcd5b9e0e2084d915010e94d9e562346c9b5d26ef4cf5cd1ee29a3be9399",
+        },
+        "performed": {
+            5: "bf49b762d1059e10b1d09834442d9e00fc07c94029df81c22eb67981717b66d1",
+            20: "11d2aa1d747d91011830a4d06821a464c74aff314f13002f3a0770b534b7f11f",
+            50: "5995f227ab0a581efa93545cf1412f82594c8102efa6a88dab9517096d80eb2a",
+        },
+    },
+    "sharing_incontext_benign_hop_assured_notool": {
+        "none": {
+            5: "1cb70e4fac7995fa52f440a85f39457793dadd11ef6ff8d66e5cef61e64caf9e",
+            20: "238dd5e48303093cf40ef5d92b2bfaf4ca51e5316c021417d58e42df65a8cde2",
+            50: "7068ff2d5b8cec523e91da52216365fdba4cea8eff06131f5755105a9efd1c8f",
+        },
+        "performed": {
+            5: "373ab15c2924061d8fe5e6844e505256644b664d0ca9b84b4d2636b2f0bff2aa",
+            20: "a4c9955ff0b8377b972d2bf9d0bbd5e0762be65f367e00af657c522a97db27be",
+            50: "8970695a4db74fd531ee1563778ca3562ff14c343464aa59562c167aee514c31",
+        },
+    },
+    "sharing_incontext_risky_hop_pointer": {
+        "none": {
+            5: "48e4821992faffebfec5e42fc229fadbda811a0355163211efd03f5488b1bd5d",
+            20: "b0ad12bdeb3151c9f4d19707e23801e18cc63fc4a40f75723f6a10431ed9c227",
+            50: "07329f66ee3889ccb377a16b61a692123f1590a25a75c9317d2f368f6b5cd353",
+        },
+        "performed": {
+            5: "1fb03b428e6cf2706958e336e5a53e8adf036484a5a0daaaaa27dc8acec4306f",
+            20: "21b28d5dad78bffcbe03d7a2bf2c6a8656e3c50811005ff2ca3d7dfadc37eb1f",
+            50: "bac80f10ebdb2b460e7ca2073b704e566ca85060e0e0bfd7c0ff1fa896f9fef5",
+        },
+    },
+    "sharing_incontext_benign_hop_pointer": {
+        "none": {
+            5: "57590991e39ea87429be401a749b1c265287231e2aa1d568fc33ec7ca9b6a4f5",
+            20: "7b381c1174f34565bc4464431ca7532b335c0e30fedfa62ad399ba7ea3835619",
+            50: "e6bb773b06789aa7d079b7052ba7eb9c10a7d8aebcc914e3107cb295f926ff16",
+        },
+        "performed": {
+            5: "50837986df6c1a6c96a824341773208368e822ad4b4079961560c65e6d83acf8",
+            20: "45ad25abf60049d4312ffa8997f6bbfbe8340311122d6006f453b617bac9334e",
+            50: "3f9d3e1c88ce434e1793eca7b3fdfc7bf53c87f5f6efc8870e2448efca546cdb",
+        },
+    },
+    "sharing_incontext_risky_hop_assured_hardened": {
+        "none": {
+            5: "188e7fbef70e22851572ecce4c30f8045ad3ce5737d540c8ba703a2f51cb4158",
+            20: "f01fd5ab1f8165397cb85be633f95f512036b22fcc96aaf4d628f426cb293820",
+            50: "4383d6f95ba9f791dfa5e56566f64ee7c2117da16bd7a4df22d1bf2632752122",
+        },
+        "performed": {
+            5: "604f2ca2cd4756142940aac6b182c544f46645be4bc6899c2b4b06a8df4b3aaf",
+            20: "80860f3afd24be275f5290c75a3a48a596aada0232cfb229a62b60af296e5b24",
+            50: "3870c07e86819bef774b2aaffd919b756640b1396529d3c1da0fe82517774058",
+        },
+    },
+    "sharing_incontext_benign_hop_assured_hardened": {
+        "none": {
+            5: "3dc75f00525dcd888230e1faaa83d97a861c0567574fe9c37cf035ea01b9fc25",
+            20: "3f90fa31f4d4c166e81c892f0de3617ad51d7b209db191b3c8bed77955277c18",
+            50: "f8c68d2b6fd3d58c01f2fa579b64e83fb77655124a4ad7d7fab6a0e417ef2042",
+        },
+        "performed": {
+            5: "8e2978e6646e1594579731ee0a9ab067f30a3c789242df327bb3b8a9ee616b29",
+            20: "f6401dfc79f7c1ba93ac7872aefbf2c80cdee7357c51d3586da802874ef0ff37",
+            50: "0c4e0fbc862e32d5044e4c215b1fbc08e2f3a7ef07509395d7a00628f5fde66a",
+        },
+    },
+    "sharing_incontext_risky_hop_hardened": {
+        "none": {
+            5: "5bfc1af184bf77c92b7e3af4d31ed09793053a0cb6950e4f182c03b2ba574052",
+            20: "a3a1e0c77fce2a7edaf96162475cf6e24bcd40a40bbf15152356a2c772e7015c",
+            50: "41378d9fb6f3db51052ae778eafd11a1f24753d8b83aec9060b37cef0889bd5d",
+        },
+        "performed": {
+            5: "def908e0c2b56c7293b57c14a4cf77a79e3ea5d97928214fb10460e3bcb91344",
+            20: "130d492117ea305e626447e60c6d3d0c58f01e49a988a6d13ef3d0c8948acc78",
+            50: "4045b8045a245d9486d1dc6ea9b91f5590eba3e06a5f27610e0b65f5fedd674f",
+        },
+    },
+    "sharing_incontext_benign_hop_hardened": {
+        "none": {
+            5: "05410bea04a29f3dcff1c12ba42a5c4fb8977b0b3b4573cbc6dbda1980461a20",
+            20: "4c7159c17b383900895f839864c6bd1d16a532745c820697363b3c109e226307",
+            50: "abc0c1f1dd6fa2d36bfa1b8728e7193e36a8960363f08f112f1d99772adfc5bc",
+        },
+        "performed": {
+            5: "76c16384b7cc421cd4f3e036ee36beefaad71be8e4be0aee4854eb3153a7babf",
+            20: "e82ebfe8951fc8d22c37dddf07f5ef1135a31dd831bbf27eebb5d1aa491483d9",
+            50: "91641fab9c0488f68ace785db2a270011a62932d3ea69f434e4ccffc430d8e04",
+        },
+    },
+    "sharing_incontext_risky_hop_relay_verbatim": {
+        "none": {
+            5: "ee1b64fbea02c1316d6111aa65f0171999c47604b6b77072193a967daf0fa17d",
+            20: "1363caaed4317ad69a77efcbaaa835d3e64194041c00e8446acbb8ecf540090e",
+            50: "744c0bdb6d457c9b9712324074047429a3608820802433152e5132e80ee95501",
+        },
+        "performed": {
+            5: "e41c92eaae41487e164af31985513991664b2afe53bcc0a80fb5c99f1c4b45a4",
+            20: "2f312924136d36e28022fba6a2fa238475e207da167dbefdc3c898df03b2c6d3",
+            50: "9bb6db794416680353009d13e782799f75153eb84945d5392fa91acc47f6d180",
+        },
+    },
+    "sharing_incontext_benign_hop_relay_verbatim": {
+        "none": {
+            5: "969806a8cfa3eef1fe15fb9e1df50505940011ad6ae6ab29afd574b5b9c11c9c",
+            20: "1089a5794bdd2591ef60ae6b8f32ff87d271c16b8d4c7306d4ff99219805f892",
+            50: "a9b166bac918bc4c1128643860a8cf357efa01a4b56bec09d392d38b81bb5cd6",
+        },
+        "performed": {
+            5: "6dd75d83b05dfb966f8743e6fe41bc1bf2bc55f2510a4ab20b980c88ed48267c",
+            20: "cda93fafe13948816e1e8ec3b9e3d04dba7f12d7acaac0da02eab6c1a61ba923",
+            50: "5207803612baecc28f5c7fcfff0cb0cda4bed90ef36cf1996e9abf2ea90fdcdd",
+        },
+    },
+    "sharing_incontext_risky_hop_relay_paraphrase": {
+        "none": {
+            5: "ac24ef466638502468a5eec601e09bebfc059b6c2b80e32ab921f6edd9c0a9c9",
+            20: "77f1fdb16feaa83d9cfbf48138d9398b495a335c4422ac890ac4cfa7d9eca2ec",
+            50: "c52c2ad0156d37c05be2e138ca9e4e110796c7cb71597c0c72121e560020f81c",
+        },
+        "performed": {
+            5: "9fc04b8cdccffb51811d8ae2fd264f58ca1e07fd0bbfa47a0d46c60b02b82596",
+            20: "949dfa3793fc5e8c5f57ea4a9971eb414bf7ecc17a8840857165ed6d7d7b77df",
+            50: "66a7915ae525e5eef9ed38835b4142440f3f5d6dcf1bab79aeaefe5738364ae7",
+        },
+    },
+    "sharing_incontext_benign_hop_relay_paraphrase": {
+        "none": {
+            5: "5362469adce18c1d757ce0b8b8df5bc43298e047d11af09d151cd302219110fc",
+            20: "aea6e12eec34e191ad9a14d327f8df170d769673c623bb0bbc0f07fe16618bc4",
+            50: "9ae2c8f6cb630839f6aeabaf309ed95f7ad59bab9bbe60d4586535a4dca7ba0a",
+        },
+        "performed": {
+            5: "4811f36b1f33d9eaf32f008859fcbfb48049e416d4d6a904289e4604c9fddba4",
+            20: "ba884c1b2f044eee134ac968a048b5560d803bcaab80496c17d59e7108c6c911",
+            50: "cccc0672a4290685b4227850f005ed6d910aae22ebfd5dcf93f58a94a87c95f9",
+        },
+    },
+    "sharing_incontext_risky_hop_relay_vague": {
+        "none": {
+            5: "1cda32c6b7faa805e259ad323020f29c9b2370ef86a9933ca683f7dfa07a9739",
+            20: "f742a5194007e69376d383464db44a7ff7ca23440dfd9a3e6554226878af09ab",
+            50: "4e5841aa397cbeadb5b363fcbf4ba1938961a1ad1e5080bdda3ab3f21774ddb4",
+        },
+        "performed": {
+            5: "ea1b1eb2546f1c809406f5f8663b0fbfa690ce77294f404d7a620881706ee214",
+            20: "a3ccadcae5f9f0e21dbf3cca828241c2d8d7f1055769f0e75d9630bbd27a545c",
+            50: "dad64735e05241c5c9eb2b58544128e964174c121552a181d97bbd3a6f7e179f",
+        },
+    },
+    "sharing_incontext_benign_hop_relay_vague": {
+        "none": {
+            5: "ce02fcded4da3a1b0dd5388652c6e985ec7b84305c07b0fcba7ba6427710c599",
+            20: "d0f09b2ea34b29d48ada4f592d74d4201a8916ec22a4448eae44b60e590eb62c",
+            50: "2bc5134e35811ef7cfc3647c487bc30a459c9c791edf35fe54b507cd2dff7482",
+        },
+        "performed": {
+            5: "434d6e3c41585795b644f672e5c6d9738d3e7591c9199c23e598ec614fd5cba1",
+            20: "3520f19076e6f86c6106694f4a8ff994c866758b0b320da38f9d78e02ac0bac9",
+            50: "f79cd1cd1ebac26b55759208f01d48944cd85c8db3ebb574c5b8d44eee80cd89",
+        },
+    },
+}
+
+
 @pytest.mark.parametrize(
     ("pinned", "tail_hash"),
     [
@@ -714,8 +936,19 @@ PINNED_PREFIX_HASHES_INJECT = {
         (PINNED_PREFIX_HASHES_COMPETING, PINNED_TAIL_HASH_V2),
         (PINNED_PREFIX_HASHES_PRECEDENT, PINNED_TAIL_HASH_V2),
         (PINNED_PREFIX_HASHES_INJECT, PINNED_TAIL_HASH_INJECT),
+        (PINNED_PREFIX_HASHES_HANDOFF_FOLLOWUPS, PINNED_TAIL_HASH_V2),
     ],
-    ids=["plan", "plan_v2", "rules", "2x2_variants", "handoff", "competing", "precedent", "inject"],
+    ids=[
+        "plan",
+        "plan_v2",
+        "rules",
+        "2x2_variants",
+        "handoff",
+        "competing",
+        "precedent",
+        "inject",
+        "handoff_followups",
+    ],
 )
 def test_prefix_hashes_are_pinned(pinned, tail_hash) -> None:
     built: dict[str, dict[str, dict[int, str]]] = {}
@@ -939,6 +1172,45 @@ def test_precedent_history_sends_twice_without_checking() -> None:
             ]
             for args in sends:
                 assert args["recipient"] in world.document(args["document_id"]).access
+
+
+def _config_fields_that_differ(a, b) -> set[str]:
+    return {k for k in type(a).model_fields if getattr(a, k) != getattr(b, k)}
+
+
+def test_handoff_performed_is_arms_d_e_f_at_length_20_under_both_patterns() -> None:
+    from safety_checking.config import load_experiment_config
+
+    performed, _ = load_experiment_config("configs/handoff_performed.yaml")
+    short, _ = load_experiment_config("configs/handoff.yaml")
+    arms = ("hop_norule", "hop_assured_norule", "hop_assured_rule")
+    assert performed.scenarios == [s for s in short.scenarios if s.endswith(arms)]
+    assert performed.lengths == [20] and performed.patterns == ["none", "performed"]
+    assert _config_fields_that_differ(short, performed) == {
+        "experiment",
+        "scenarios",
+        "lengths",
+        "patterns",
+    }
+    for scenario_id in performed.scenarios:
+        scenario = load_scenario(scenario_id)
+        world = load_scenario_world(scenario)
+        for pattern in performed.patterns:
+            prefix = build(scenario, world, 20, pattern)
+            assert prefix.prefix_hash == PINNED_PREFIX_HASHES_HANDOFF[scenario_id][pattern][20]
+
+
+def test_handoff_n100_is_handoff_with_100_samples_into_the_same_log() -> None:
+    from safety_checking.config import load_experiment_config
+    from safety_checking.runner.store import compute_run_id
+
+    n100, _ = load_experiment_config("configs/handoff_n100.yaml")
+    short, _ = load_experiment_config("configs/handoff.yaml")
+    assert n100.experiment == "handoff" and n100.n_samples == 100
+    assert _config_fields_that_differ(short, n100) == {"n_samples"}
+    # the sample index is in the run id, so indices 50-99 are new runs, not repeats
+    ids = {compute_run_id("p", "m", "baseline", {}, i) for i in range(100)}
+    assert len(ids) == 100
 
 
 # The long-horizon scenarios (plan_long / plan_v2_long: lengths 5, 20, 50, 100, 200). Their
