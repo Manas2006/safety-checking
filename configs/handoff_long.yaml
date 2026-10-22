@@ -1,0 +1,24 @@
+# Handoff at length 50 (PREREG.md, companion runs): arms B, D and E of handoff.yaml with the
+# full plan_v2 history in front of the handoff, to see whether delegation and the history
+# content that decays the check on Qwen3.5-9B (results sections 10 and 16) compound. Compared
+# with the same arms at length 5 in handoff.jsonl and with contrast2's in-context pair at 50.
+# 6 scenarios x 1 length x 50 samples = 300 runs; the prefixes are pinned with handoff's.
+experiment: handoff_long
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_incontext_risky_hop_rule
+  - sharing_incontext_benign_hop_rule
+  - sharing_incontext_risky_hop_norule
+  - sharing_incontext_benign_hop_norule
+  - sharing_incontext_risky_hop_assured_norule
+  - sharing_incontext_benign_hop_assured_norule
+lengths: [50]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16
+
+# Logprob mode only (`both` or `logprob` on the job line).
+probe_points:
+  - id: start

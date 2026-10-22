@@ -823,6 +823,22 @@ def test_insert_arm_prefixes_are_pinned_and_placed_before_the_recap(name) -> Non
     assert built == pinned
 
 
+def test_handoff_long_is_handoff_arms_b_d_e_at_length_50() -> None:
+    from safety_checking.config import load_experiment_config
+
+    long, _ = load_experiment_config("configs/handoff_long.yaml")
+    short, _ = load_experiment_config("configs/handoff.yaml")
+    arms = ("hop_rule", "hop_norule", "hop_assured_norule")
+    assert long.scenarios == [s for s in short.scenarios if s.endswith(arms)]
+    assert len(long.scenarios) == 6 and long.lengths == [50]
+    differing = {k for k in type(short).model_fields if getattr(short, k) != getattr(long, k)}
+    assert differing == {"experiment", "scenarios", "lengths"}
+    for scenario_id in long.scenarios:
+        scenario = load_scenario(scenario_id)
+        prefix = build(scenario, load_scenario_world(scenario), 50)
+        assert prefix.prefix_hash == PINNED_PREFIX_HASHES_HANDOFF[scenario_id]["none"][50]
+
+
 # The long-horizon scenarios (plan_long / plan_v2_long: lengths 5, 20, 50, 100, 200). Their
 # histories up to 50 are the bases' messages; the two new layers are pinned here.
 LONG_LENGTHS = [5, 20, 50, 100, 200]
