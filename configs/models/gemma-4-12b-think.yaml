@@ -1,0 +1,68 @@
+# google/gemma-4-12B-it, BF16, THINKING ON, served by vLLM on ONE A100 40 GB (gpu-a100*).
+# gemma-4-12b-nothink.yaml with reasoning enabled, built as qwen3.5-9b-think.yaml was from its
+# twin (SPEC.md 3.9): the same weights, revision and server, with enable_thinking true per
+# request, max_tokens raised to 4096 so the reasoning cannot crowd out the tool call, and
+# max_model_len raised to 65536 so eight such steps fit after a 12k prompt. No download.
+#
+# Thinking switch checked on 2026-10-22 against the two sources in the nothink header:
+#   https://huggingface.co/google/gemma-4-12B-it
+#     - "To enable reasoning, set enable_thinking=True" (chat template); the template then puts
+#       <|think|> at the start of the system prompt
+#     - sampling is one standard configuration for every use: temperature 1.0, top_p 0.95,
+#       top_k 64, so the nothink file's sampling is kept unchanged
+#     - "thoughts from previous model turns must not be added before the next user turn begins,
+#       with the exception of tool call turns where thinking content should be preserved". The
+#       runner records reasoning per step but does not send it back, as for qwen3.5-9b-think;
+#       within one decision segment the earlier steps' thoughts are therefore not in context
+#   https://docs.vllm.ai/projects/recipes/en/stable/Google/Gemma4.html
+#     - per request: extra_body={"chat_template_kwargs": {"enable_thinking": True}}
+#     - --reasoning-parser gemma4 is "required for thinking mode" (already set in the twin)
+#     - "increase --max-model-len and max_tokens accordingly"; its thinking examples use
+#       max_tokens 4096
+#
+# Logprob mode does not apply: with thinking on the next token after the prompt is reasoning,
+# not a tool call. There is deliberately no `logprob` section.
+#
+# Everything in this file is hashed into the adapter name, and so into every run id.
+
+id: gemma-4-12b-think
+hf_repo: google/gemma-4-12B-it
+revision: 707f0a3b8a3c7ad586ed01e27eafbad8a27dd0f7
+served_model_name: gemma-4-12b
+
+serve:
+  vllm_version: "0.29.0"
+  tensor_parallel_size: 1
+  # A 12k prompt plus eight 4096-token thinking steps is about 45k, as for qwen3.5-9b-think.
+  max_model_len: 65536
+  dtype: bfloat16
+  gpu_memory_utilization: 0.90
+  max_num_seqs: 16
+  seed: 0
+  tool_call_parser: gemma4
+  reasoning_parser: gemma4
+  enable_prefix_caching: true
+  host: 127.0.0.1
+  port: 8000
+  startup_timeout_s: 1200
+  extra_args:
+    # text only: skip multimodal profiling (recipe, "text-only workloads")
+    - --limit-mm-per-prompt
+    - '{"image": 0, "audio": 0, "video": 0}'
+  env:
+    # LS6 compute nodes have no nvcc. See qwen3.8-27b-nothink.yaml.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+
+request:
+  sampling:
+    temperature: 1.0
+    top_p: 0.95
+    max_tokens: 4096
+  extra_body:
+    top_k: 64
+    chat_template_kwargs:
+      enable_thinking: true
+  base_seed: 0
+
+notes: >-
+  Small Gemma with thinking on. Not yet served: the first job is also the first test of this file.

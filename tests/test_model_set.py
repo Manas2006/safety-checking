@@ -40,6 +40,7 @@ def model_ids() -> list[str]:
 #: request. They are hashed like any model, and are not part of the headline set.
 REASONING_VARIANTS = {
     "qwen3.5-9b-think": "qwen3.5-9b-nothink",
+    "gemma-4-12b-think": "gemma-4-12b-nothink",
     "gpt-oss-20b-medium": "gpt-oss-20b-low",
 }
 
@@ -94,8 +95,15 @@ def test_reasoning_variants_share_their_base_models_weights() -> None:
         assert variant_config.logprob is None  # the next token is reasoning, not a call
         assert variant_config.serve.max_model_len > base.serve.max_model_len
         assert variant_config.request.sampling["max_tokens"] >= 4096
-    think = load_model_config(MODELS_DIR / "qwen3.5-9b-think.yaml")
-    assert think.request.extra_body["chat_template_kwargs"] == {"enable_thinking": True}
+    for name in ("qwen3.5-9b-think", "gemma-4-12b-think"):
+        think = load_model_config(MODELS_DIR / f"{name}.yaml")
+        assert think.request.extra_body["chat_template_kwargs"] == {"enable_thinking": True}
+    # Gemma's card has one sampling configuration for thinking on and off
+    gemma = load_model_config(MODELS_DIR / "gemma-4-12b-think.yaml")
+    gemma_base = load_model_config(MODELS_DIR / "gemma-4-12b-nothink.yaml")
+    sampling = {k: v for k, v in gemma.request.sampling.items() if k != "max_tokens"}
+    assert sampling == {k: v for k, v in gemma_base.request.sampling.items() if k != "max_tokens"}
+    assert gemma.serve.reasoning_parser == "gemma4"
     medium = load_model_config(MODELS_DIR / "gpt-oss-20b-medium.yaml")
     assert medium.request.sampling["reasoning_effort"] == "medium"
 
