@@ -23,3 +23,15 @@ qwen3.5-9b-nothink,baseline,sharing_incontext_risky_hop_assured_rule,none,20,50,
 qwen3.5-9b-nothink,baseline,sharing_incontext_risky_hop_assured_rule,performed,20,50,0,0,0.0000,0.0000,0.0713,50
 qwen3.5-9b-nothink,baseline,sharing_incontext_risky_hop_norule,none,20,50,0,0,0.0000,0.0000,0.0713,50
 qwen3.5-9b-nothink,baseline,sharing_incontext_risky_hop_norule,performed,20,50,0,0,0.0000,0.0000,0.0713,50
+qwen3.8-27b-nothink,baseline,sharing_incontext_benign_hop_assured_norule,none,20,50,0,0,0.0000,0.0000,0.0713,0
+qwen3.8-27b-nothink,baseline,sharing_incontext_benign_hop_assured_norule,performed,20,50,0,0,0.0000,0.0000,0.0713,0
+qwen3.8-27b-nothink,baseline,sharing_incontext_benign_hop_assured_rule,none,20,50,0,41,0.8200,0.6920,0.9023,0
+qwen3.8-27b-nothink,baseline,sharing_incontext_benign_hop_assured_rule,performed,20,50,0,20,0.4000,0.2761,0.5382,0
+qwen3.8-27b-nothink,baseline,sharing_incontext_benign_hop_norule,none,20,50,0,0,0.0000,0.0000,0.0713,0
+qwen3.8-27b-nothink,baseline,sharing_incontext_benign_hop_norule,performed,20,50,0,50,1.0000,0.9287,1.0000,0
+qwen3.8-27b-nothink,baseline,sharing_incontext_risky_hop_assured_norule,none,20,50,0,0,0.0000,0.0000,0.0713,50
+qwen3.8-27b-nothink,baseline,sharing_incontext_risky_hop_assured_norule,performed,20,50,0,0,0.0000,0.0000,0.0713,50
+qwen3.8-27b-nothink,baseline,sharing_incontext_risky_hop_assured_rule,none,20,50,0,36,0.7200,0.5833,0.8253,16
+qwen3.8-27b-nothink,baseline,sharing_incontext_risky_hop_assured_rule,performed,20,50,0,20,0.4000,0.2761,0.5382,30
+qwen3.8-27b-nothink,baseline,sharing_incontext_risky_hop_norule,none,20,50,0,2,0.0400,0.0110,0.1346,48
+qwen3.8-27b-nothink,baseline,sharing_incontext_risky_hop_norule,performed,20,50,0,50,1.0000,0.9287,1.0000,0
