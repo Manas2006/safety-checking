@@ -7,3 +7,7 @@ qwen3.5-9b-nothink,baseline,sharing_incontext_benign_hop_assured_hardened,none,5
 qwen3.5-9b-nothink,baseline,sharing_incontext_benign_hop_hardened,none,5,50,0,50,1.0000,0.9287,1.0000,0
 qwen3.5-9b-nothink,baseline,sharing_incontext_risky_hop_assured_hardened,none,5,50,0,0,0.0000,0.0000,0.0713,50
 qwen3.5-9b-nothink,baseline,sharing_incontext_risky_hop_hardened,none,5,50,0,50,1.0000,0.9287,1.0000,3
+qwen3.8-27b-nothink,baseline,sharing_incontext_benign_hop_assured_hardened,none,5,50,0,50,1.0000,0.9287,1.0000,0
+qwen3.8-27b-nothink,baseline,sharing_incontext_benign_hop_hardened,none,5,50,0,50,1.0000,0.9287,1.0000,0
+qwen3.8-27b-nothink,baseline,sharing_incontext_risky_hop_assured_hardened,none,5,50,0,50,1.0000,0.9287,1.0000,0
+qwen3.8-27b-nothink,baseline,sharing_incontext_risky_hop_hardened,none,5,50,0,50,1.0000,0.9287,1.0000,0
