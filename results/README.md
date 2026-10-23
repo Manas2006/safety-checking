@@ -33,62 +33,84 @@ Rerun it after a job lands, then commit the tables with the write-up that quotes
   check-then-send failure, and the logprob validation.
 
 - [2026-10-22: handoff check rates and outcomes](2026-10-22-handoff.md), with transcripts in
-  `transcripts/handoff-2026-10-22.md`. Tables only, no interpretation yet.
+  `transcripts/handoff-2026-10-22.md` and `transcripts/hardened-qwen3.5-9b-2026-10-23.md`; it
+  also holds handoff_performed and handoff_hardened on Qwen3.5-9B. Tables only, no
+  interpretation yet.
 
 `tables/logprob_validation.csv` compares the 200-sample validation run with the logprob
 predictions; the export script writes it whenever `gate_neutral.jsonl` exists.
 
-## What is still running
+## Jobs
 
-Submitted 2026-10-21 and 2026-10-22, all charged to ECS26006 with `-t 02:00:00`. Jobs that
-write the same log run in one serial `afterany` chain; `pos` is the position in that chain.
+All charged to ECS26006 with `-t 02:00:00`. Jobs that write the same log run one at a time,
+in one `afterany` chain per log file.
 
 ```bash
-sacct -u manasp123 -S 2026-10-21 -o JobID,JobName%34,State,Elapsed,Start
+sacct -u manasp123 -S 2026-10-21 -o JobID,JobName%34,Partition,State,Elapsed,Start
 ```
 
-| job | config | mode | model | partition | log | pos | after |
-|---|---|---|---|---|---|---|---|
-| 3527562 | `handoff.yaml` | run | gpt-oss-20b-low | gpu-a100 | `handoff.jsonl` | 1 | 3527551-3 (done) |
-| 3527563 | `handoff.yaml` | run | qwen3.5-9b-think | gpu-a100 | `handoff.jsonl` | 2 | 3527562 |
-| 3528647 | `handoff.yaml` | run | gemma-4-12b-think | gpu-a100 | `handoff.jsonl` | 3 | 3527563 |
-| 3528648 | `handoff.yaml` | run | qwen3.5-27b-nothink | gpu-a100 | `handoff.jsonl` | 4 | 3528647 |
-| 3528649 | `handoff.yaml` | run | ministral-3-8b | gpu-a100 | `handoff.jsonl` | 5 | 3528648 |
-| 3528650 | `handoff_n100.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `handoff.jsonl` | 6 | 3528649 |
-| 3528651 | `handoff_n100.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `handoff.jsonl` | 7 | 3528650 |
-| 3528652 | `handoff_n100.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `handoff.jsonl` | 8 | 3528651 |
-| 3528653 | `handoff.yaml` | run | gpt-oss-120b-low | gpu-h100 | `handoff.jsonl` | 9 | 3528652 |
-| 3528654 | `handoff.yaml` | run | gemma-4-31b-nothink | gpu-h100 | `handoff.jsonl` | 10 | 3528653 |
-| 3527564 | `competing.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `competing.jsonl` | 1 | none |
-| 3527565 | `competing.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `competing.jsonl` | 2 | 3527564 |
-| 3527566 | `competing.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `competing.jsonl` | 3 | 3527565 |
-| 3527567 | `override.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `override.jsonl` | 1 | none |
-| 3527568 | `override.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `override.jsonl` | 2 | 3527567 |
-| 3527569 | `override.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `override.jsonl` | 3 | 3527568 |
-| 3527570 | `urgency.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `urgency.jsonl` | 1 | none |
-| 3527571 | `urgency.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `urgency.jsonl` | 2 | 3527570 |
-| 3527572 | `handoff_long.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `handoff_long.jsonl` | 1 | none |
-| 3527573 | `contrast2_ingredients.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `contrast2_ingredients.jsonl` | 1 | none |
-| 3527574 | `contrast2_ingredients.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `contrast2_ingredients.jsonl` | 2 | 3527573 |
-| 3527575 | `precedent.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `precedent.jsonl` | 1 | none |
-| 3527576 | `precedent.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `precedent.jsonl` | 2 | 3527575 |
-| 3527577 | `inject.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `inject.jsonl` | 1 | none |
-| 3527578 | `inject.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `inject.jsonl` | 2 | 3527577 |
-| 3528655 | `handoff.yaml` | logprob | qwen3.5-9b-nothink | gpu-a100 | `handoff.logprob.jsonl` | 1 | none |
-| 3528656 | `handoff.yaml` | logprob | qwen3.8-27b-nothink | gpu-a100 | `handoff.logprob.jsonl` | 2 | 3528655 |
-| 3528657 | `handoff_performed.yaml` | run | qwen3.5-9b-nothink | gpu-a100-dev | `handoff_performed.jsonl` | 1 | none |
-| 3528658 | `handoff_performed.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `handoff_performed.jsonl` | 2 | 3528657 |
-| 3528659 | `handoff_performed.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `handoff_performed.jsonl` | 3 | 3528658 |
-| 3528660 | `handoff_source.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `handoff_source.jsonl` | 1 | none |
-| 3528661 | `handoff_source.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `handoff_source.jsonl` | 2 | 3528660 |
-| 3528662 | `handoff_source.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `handoff_source.jsonl` | 3 | 3528661 |
-| 3528663 | `handoff_hardened.yaml` | run | qwen3.5-9b-nothink | gpu-a100-dev | `handoff_hardened.jsonl` | 1 | none |
-| 3528664 | `handoff_hardened.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `handoff_hardened.jsonl` | 2 | 3528663 |
-| 3528665 | `handoff_hardened.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `handoff_hardened.jsonl` | 3 | 3528664 |
+### Run on gpu-a100-dev, 2026-10-23
 
-Not submitted: `handoff_relay.yaml` on qwen3.5-9b-nothink, gemma-4-12b-nothink and
-qwen3.8-27b-nothink (one chain into `handoff_relay.jsonl`). The gpu-a100 queue allows 32
-submitted jobs per user and was full on 2026-10-22; it goes in when slots free.
+The normal gpu-a100 queue had started none of the jobs below in 37 hours, so they were
+cancelled there and rerun on the dev queue (1 running and 3 submitted per user), in this order.
+Tables are in `tables/`; no write-up yet.
 
-Done: handoff.yaml on Qwen3.5-9B, Gemma 4 12B and Qwen3.8-27B (3527551 to 3527553),
-[2026-10-22-handoff.md](2026-10-22-handoff.md).
+| # | job | config | model | state | normal-queue job cancelled |
+|---|---|---|---|---|---|
+| 1 | 3531078 | `competing.yaml` | gemma-4-12b-nothink | done | 3527565 |
+| 2 | 3531080 | `handoff_hardened.yaml` | gemma-4-12b-nothink | done | 3528664 |
+| 3 | 3531081 | `handoff_hardened.yaml` | qwen3.8-27b-nothink | done | 3528665 |
+| 4 | 3531201 | `handoff_performed.yaml` | gemma-4-12b-nothink | done | 3528658 |
+| 5 | 3531210 | `handoff_performed.yaml` | qwen3.8-27b-nothink | done | 3528659 |
+| 6 | 3531222 | `override.yaml` | gemma-4-12b-nothink | done | 3527568 |
+| 7 | 3531265 | `handoff_source.yaml` | gemma-4-12b-nothink | done | 3528661 |
+| 8 | 3531283 | `handoff_source.yaml` | qwen3.8-27b-nothink | done | 3528662 |
+| 9 | 3531290 | `handoff_source.yaml` | qwen3.5-9b-nothink | done | 3528660 |
+| 10 | 3531308 | `handoff.yaml` | qwen3.5-9b-think | done | 3527563 |
+| 11 | 3531345 | `handoff.yaml` | gemma-4-12b-think | done | 3528647 |
+| 12 | 3531359, 3531418 | `handoff.yaml` | gpt-oss-20b-low | done on the resubmission | 3527562 |
+| 13 | 3531369 | `handoff_relay.yaml` | gemma-4-12b-nothink | done | none (never submitted) |
+| 14 | 3531397 | `handoff_relay.yaml` | qwen3.5-9b-nothink | done | none (never submitted) |
+| 15 | 3531410 | `competing.yaml` | qwen3.8-27b-nothink | done | 3527566 |
+| 16 | 3531426 | `competing.yaml` | qwen3.5-9b-nothink | done | 3527564 |
+
+No run was excluded in any of these jobs except gpt-oss-20b-low: 3531359 wrote all 500 runs,
+but one ended in an adapter error, and `sc run` exits 1 on any error, so the job counted as
+failed. The resubmission, 3531418, redid that run (1 new, 499 skipped) and exited 0. That
+model has 3 excluded runs in all (tool-call parse failures), in arms D and F.
+
+Also run on the dev queue earlier: handoff.yaml on Qwen3.5-9B, Gemma 4 12B and Qwen3.8-27B
+(3527551 to 3527553), and handoff_performed and handoff_hardened on Qwen3.5-9B (3528657,
+3528663).
+
+### Still pending on gpu-a100 and gpu-h100
+
+| job | config | mode | model | partition | log | after |
+|---|---|---|---|---|---|---|
+| 3528648 | `handoff.yaml` | run | qwen3.5-27b-nothink | gpu-a100 | `handoff.jsonl` | 3531418 (done) |
+| 3528649 | `handoff.yaml` | run | ministral-3-8b | gpu-a100 | `handoff.jsonl` | 3528648 |
+| 3528650 | `handoff_n100.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `handoff.jsonl` | 3528649 |
+| 3528651 | `handoff_n100.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `handoff.jsonl` | 3528650 |
+| 3528652 | `handoff_n100.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `handoff.jsonl` | 3528651 |
+| 3528653 | `handoff.yaml` | run | gpt-oss-120b-low | gpu-h100 | `handoff.jsonl` | 3528652 |
+| 3528654 | `handoff.yaml` | run | gemma-4-31b-nothink | gpu-h100 | `handoff.jsonl` | 3528653 |
+| 3527567 | `override.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `override.jsonl` | 3531222 (done) |
+| 3527569 | `override.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `override.jsonl` | 3527567 |
+| 3527570 | `urgency.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `urgency.jsonl` | none |
+| 3527571 | `urgency.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `urgency.jsonl` | 3527570 |
+| 3527572 | `handoff_long.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `handoff_long.jsonl` | none |
+| 3527573 | `contrast2_ingredients.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `contrast2_ingredients.jsonl` | none |
+| 3527574 | `contrast2_ingredients.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `contrast2_ingredients.jsonl` | 3527573 |
+| 3527575 | `precedent.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `precedent.jsonl` | none |
+| 3527576 | `precedent.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `precedent.jsonl` | 3527575 |
+| 3527577 | `inject.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `inject.jsonl` | none |
+| 3527578 | `inject.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `inject.jsonl` | 3527577 |
+| 3528655 | `handoff.yaml` | logprob | qwen3.5-9b-nothink | gpu-a100 | `handoff.logprob.jsonl` | none |
+| 3528656 | `handoff.yaml` | logprob | qwen3.8-27b-nothink | gpu-a100 | `handoff.logprob.jsonl` | 3528655 |
+
+Two pending jobs had their dependencies changed to keep one writer per log:
+- 3528648 was re-pointed from 3528647 (cancelled) onto the dev handoff jobs.
+- 3527567 was put behind the dev override job, and 3527569 behind 3527567, in place of
+  3527568 (cancelled).
+
+Not submitted anywhere: `handoff_relay.yaml` on qwen3.8-27b-nothink.
