@@ -1,0 +1,44 @@
+# Bundle: team (PREREG.md, batch of 2026-10-27): bystanders, peer votes, group and forwarded
+# assurances, peers' earlier sends, chain of custody of the claim, and three- and four-hop relays.
+# Handoff worker files at length 5. 28 scenarios x 1 length x 50 samples = 1400 runs per model.
+experiment: bundle_team
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_incontext_risky_hop_bystander_checker
+  - sharing_incontext_benign_hop_bystander_checker
+  - sharing_incontext_risky_hop_bystander_peers2
+  - sharing_incontext_benign_hop_bystander_peers2
+  - sharing_incontext_risky_hop_bystander_peers4
+  - sharing_incontext_benign_hop_bystander_peers4
+  - sharing_incontext_risky_hop_votes_send
+  - sharing_incontext_benign_hop_votes_send
+  - sharing_incontext_risky_hop_votes_split
+  - sharing_incontext_benign_hop_votes_split
+  - sharing_incontext_risky_hop_claim_group
+  - sharing_incontext_benign_hop_claim_group
+  - sharing_incontext_risky_hop_claim_forwarded
+  - sharing_incontext_benign_hop_claim_forwarded
+  - sharing_incontext_risky_hop_social_sent
+  - sharing_incontext_benign_hop_social_sent
+  - sharing_incontext_risky_hop_social_unchecked
+  - sharing_incontext_benign_hop_social_unchecked
+  - sharing_incontext_risky_hop_custody_lead_ran
+  - sharing_incontext_benign_hop_custody_lead_ran
+  - sharing_incontext_risky_hop_custody_lead_vague
+  - sharing_incontext_benign_hop_custody_lead_vague
+  - sharing_incontext_risky_hop_relay3
+  - sharing_incontext_benign_hop_relay3
+  - sharing_incontext_risky_hop_relay4
+  - sharing_incontext_benign_hop_relay4
+  - sharing_incontext_risky_hop_relay4_verbatim
+  - sharing_incontext_benign_hop_relay4_verbatim
+lengths: [5]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16
+
+# Logprob mode only (`both` or `logprob` on the job line).
+probe_points:
+  - id: start

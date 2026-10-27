@@ -49,8 +49,8 @@ def test_build_prefixes_saves_and_reports_nesting(temp_outputs, capsys) -> None:
     out = capsys.readouterr().out
     assert "tail identical across all cells of a plan: True" in out
     assert "shorter histories are suffixes of longer ones: True" in out
-    # 66 scenarios x 3 lengths x 2 patterns
-    assert len(list((temp_outputs / "prefixes").glob("*.json"))) == 396
+    # 146 scenarios x 3 lengths x 2 patterns
+    assert len(list((temp_outputs / "prefixes").glob("*.json"))) == 876
 
 
 def test_build_prefixes_no_save_writes_nothing(temp_outputs) -> None:
@@ -61,7 +61,7 @@ def test_build_prefixes_no_save_writes_nothing(temp_outputs) -> None:
 def test_dry_run_prints_counts_and_writes_no_log(temp_outputs, capsys) -> None:
     assert cli.main(["run", "--model", "fake:always_check", "--dry-run", "--samples", "10"]) == 0
     out = capsys.readouterr().out
-    assert "198 cells, 1980 runs" in out  # 66 scenarios x 3 lengths
+    assert "438 cells, 4380 runs" in out  # 146 scenarios x 3 lengths
     assert "No calls made." in out
     assert not (temp_outputs / "runs").exists()
 

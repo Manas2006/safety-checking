@@ -1,0 +1,40 @@
+# Bundle: dialogue (PREREG.md, batch of 2026-10-27): escalation, a solicited assurance, a
+# fabricated access list, a conflicting double-check from Sam, a role that reserves the check
+# for the orchestrator, and the order of claim and policy. Handoff worker files at length 5.
+# 22 scenarios x 1 length x 50 samples = 1100 runs per model; the job script's third argument
+# picks the model.
+experiment: bundle_dialogue
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_incontext_risky_hop_escalate_authority
+  - sharing_incontext_benign_hop_escalate_authority
+  - sharing_incontext_risky_hop_escalate_repeat
+  - sharing_incontext_benign_hop_escalate_repeat
+  - sharing_incontext_risky_hop_escalate_consequence
+  - sharing_incontext_benign_hop_escalate_consequence
+  - sharing_incontext_risky_hop_assured_answer
+  - sharing_incontext_benign_hop_assured_answer
+  - sharing_incontext_risky_hop_data_fabricated
+  - sharing_incontext_benign_hop_data_fabricated
+  - sharing_incontext_risky_hop_conflict_orch_first
+  - sharing_incontext_benign_hop_conflict_orch_first
+  - sharing_incontext_risky_hop_conflict_sam_first
+  - sharing_incontext_benign_hop_conflict_sam_first
+  - sharing_incontext_risky_hop_noverify
+  - sharing_incontext_benign_hop_noverify
+  - sharing_incontext_risky_hop_noverify_assured
+  - sharing_incontext_benign_hop_noverify_assured
+  - sharing_incontext_risky_hop_order_rule_after_claim
+  - sharing_incontext_benign_hop_order_rule_after_claim
+  - sharing_incontext_risky_hop_order_claim_after_rule
+  - sharing_incontext_benign_hop_order_claim_after_rule
+lengths: [5]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16
+
+# Logprob mode only (`both` or `logprob` on the job line).
+probe_points:
+  - id: start

@@ -19,6 +19,7 @@ from ..scenarios.loader import load_scenario, load_scenario_world
 from ..scenarios.schema import Scenario
 from ..scoring import score
 from ..trajectory import Trajectory
+from ..world.state import WorldState
 from .adapters import ModelAdapter
 from .loop import MAX_STEPS, run_decision
 from .store import RunRecord, append_record, completed_run_ids, compute_run_id
@@ -92,6 +93,25 @@ class ExperimentSpec(BaseModel):
     inserts: dict[int, list[dict[str, Any]]] = Field(default_factory=dict)
 
 
+#: the one variable an inserted message may use: the scenario's recipient's first name, so one
+#: insert serves both twins. Inserts without it are passed through unchanged.
+INSERT_RECIPIENT = "$recipient_first_name"
+
+
+def scenario_inserts(
+    inserts: dict[int, list[dict[str, Any]]], scenario: Scenario, world: WorldState
+) -> dict[int, list[dict[str, Any]]]:
+    """The experiment's inserts with ``$recipient_first_name`` filled in for this scenario."""
+    if not any(INSERT_RECIPIENT in m["content"] for msgs in inserts.values() for m in msgs):
+        return inserts
+    person = world.person(scenario.requested_recipient)
+    first = person.name.split()[0] if person else ""
+    return {
+        position: [{**m, "content": m["content"].replace(INSERT_RECIPIENT, first)} for m in msgs]
+        for position, msgs in inserts.items()
+    }
+
+
 def build_cells(
     spec: ExperimentSpec, prefix_dir: Path | None = None, *, save: bool = True
 ) -> list[Cell]:
@@ -110,7 +130,7 @@ def build_cells(
                     world,
                     length,
                     prior_check_pattern=pattern,
-                    inserts=spec.inserts or None,
+                    inserts=scenario_inserts(spec.inserts, scenario, world) or None,
                 )
                 if save:
                     save_prefix(prefix, prefix_dir)

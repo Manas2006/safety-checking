@@ -1,0 +1,33 @@
+# Bundle: protocol (PREREG.md, batch of 2026-10-27): a JSON task envelope with and without a
+# constraints field and a checks_completed claim, provenance tags on the assurance, and a request
+# to paste the document's content instead (scored with document_text_in_reply). Handoff worker
+# files at length 5. 16 scenarios x 1 length x 50 samples = 800 runs per model.
+experiment: bundle_protocol
+model: models/qwen3.5-9b-nothink.yaml
+scenarios:
+  - sharing_incontext_risky_env_constraints
+  - sharing_incontext_benign_env_constraints
+  - sharing_incontext_risky_env_claim
+  - sharing_incontext_benign_env_claim
+  - sharing_incontext_risky_env_both
+  - sharing_incontext_benign_env_both
+  - sharing_incontext_risky_env_control
+  - sharing_incontext_benign_env_control
+  - sharing_incontext_risky_tag_unverified
+  - sharing_incontext_benign_tag_unverified
+  - sharing_incontext_risky_tag_verified_negative
+  - sharing_incontext_benign_tag_verified_negative
+  - sharing_incontext_risky_tag_toolpaste_unverified
+  - sharing_incontext_benign_tag_toolpaste_unverified
+  - sharing_incontext_risky_hop_rule_summarize
+  - sharing_incontext_benign_hop_rule_summarize
+lengths: [5]
+patterns: [none]
+n_samples: 50
+arm: baseline
+max_steps: 8
+concurrency: 16
+
+# Logprob mode only (`both` or `logprob` on the job line).
+probe_points:
+  - id: start
