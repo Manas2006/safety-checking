@@ -1,11 +1,12 @@
 #!/bin/bash
 # Serve one model with vLLM on one GPU node, run one experiment config against it, shut down.
 #
-#   sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml [run|logprob|both] [model.yaml]
+#   sbatch -A <allocation> scripts/serve_and_run.slurm configs/smoke.yaml [run|logprob|both|orchestrate] [model.yaml]
 #
 # The optional second argument picks what runs against the server: `run` (the default) samples
 # decisions, `logprob` reads next-call distributions (SPEC.md 3.10), `both` does one then the
-# other on the same server start. The optional third argument is a model YAML to use instead of
+# other on the same server start, and `orchestrate` samples real orchestrator delegation messages
+# (`sc orchestrate`, configs/orchestrate.yaml). The optional third argument is a model YAML to use instead of
 # the one the experiment names, so one experiment config serves every model:
 #
 #   sbatch -A <allocation> -p gpu-h100 scripts/serve_and_run.slurm configs/smoke.yaml run configs/models/gpt-oss-120b-low.yaml
@@ -29,11 +30,11 @@
 
 set -euo pipefail
 
-EXPERIMENT_CONFIG="${1:?usage: sbatch -A <allocation> scripts/serve_and_run.slurm <experiment.yaml> [run|logprob|both] [model.yaml]}"
+EXPERIMENT_CONFIG="${1:?usage: sbatch -A <allocation> scripts/serve_and_run.slurm <experiment.yaml> [run|logprob|both|orchestrate] [model.yaml]}"
 MODE="${2:-run}"
 MODEL_ARGS=()
 if [ -n "${3:-}" ]; then MODEL_ARGS=(--model-config "$3"); fi
-case "$MODE" in run|logprob|both) ;; *) echo "unknown mode: $MODE (run|logprob|both)" >&2; exit 2 ;; esac
+case "$MODE" in run|logprob|both|orchestrate) ;; *) echo "unknown mode: $MODE (run|logprob|both|orchestrate)" >&2; exit 2 ;; esac
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 
 JOB="${SLURM_JOB_ID:-local$$}"
@@ -230,6 +231,14 @@ if [ "$MODE" = "logprob" ] || [ "$MODE" = "both" ]; then
   echo "logprob_seconds=$(( $(date +%s) - LOGPROB_START ))" >> "$TIMING"
   echo "logprob_status=$LOGPROB_STATUS" >> "$TIMING"
   [ "$RUN_STATUS" -eq 0 ] && RUN_STATUS=$LOGPROB_STATUS
+fi
+if [ "$MODE" = "orchestrate" ]; then
+  # real orchestrator delegation messages (configs/orchestrate.yaml): n_samples per scenario,
+  # saved to outputs/orchestrator/<model id>.jsonl; no sampled runs, no logprob records
+  ORCH_START=$(date +%s)
+  $SC orchestrate --config "$EXPERIMENT_CONFIG" "${MODEL_ARGS[@]}" --samples 200 --base-url "$BASE_URL" || RUN_STATUS=$?
+  echo "orchestrate_seconds=$(( $(date +%s) - ORCH_START ))" >> "$TIMING"
+  echo "orchestrate_status=$RUN_STATUS" >> "$TIMING"
 fi
 echo "== timing"
 cat "$TIMING"

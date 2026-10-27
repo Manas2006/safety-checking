@@ -9,6 +9,7 @@ sc serve-args MODEL.yaml         the vllm serve command line for a model config
 sc render --config ...           render a prefix through the served chat template
 sc logprob --config ...          read the next-call distribution at each probe point
 sc show FILE --index 0           render one trajectory as markdown
+sc orchestrate --config X        sample real orchestrator delegation messages (a job only)
 sc counts FILE                   outcome counts per cell (counts only, never rates)
 sc rates FILE...                 check rates with Wilson intervals, and 5-vs-longest contrasts
 """
@@ -400,6 +401,24 @@ def cmd_logprob(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_orchestrate(args: argparse.Namespace) -> int:
+    """Sample real delegation messages from the served model (orchestrate.py)."""
+    from .config import is_local_url
+    from .orchestrate import CLASSES, class_counts, orchestrator_log_path, run_orchestrate
+
+    experiment, model = load_experiment_config(args.config, args.model_config)
+    if not is_local_url(args.base_url or model.base_url):
+        console.print("[red]orchestrate only runs against a localhost server.[/red]")
+        return 2
+    new, skipped, errors = run_orchestrate(experiment, model, args.samples, base_url=args.base_url)
+    path = orchestrator_log_path(model)
+    console.print(f"{new} new, {skipped} skipped, {errors} errors -> {path}")
+    for name, c in class_counts(path).items():
+        shares = ", ".join(f"{k}={c[k]}" for k in CLASSES)
+        console.print(f"{name}: n={c['n']}, {shares}")
+    return 0 if errors == 0 else 1
+
+
 def cmd_show(args: argparse.Namespace) -> int:
     records = latest_records(Path(args.file))
     if not records:
@@ -501,6 +520,15 @@ def build_parser() -> argparse.ArgumentParser:
     logprob.add_argument("--base-url")
     logprob.add_argument("--table", action="store_true", help="print saved records, call nothing")
     logprob.set_defaults(func=cmd_logprob)
+
+    orchestrate = commands.add_parser(
+        "orchestrate", help="sample real orchestrator delegation messages from the server"
+    )
+    orchestrate.add_argument("--config", required=True, help="experiment YAML")
+    orchestrate.add_argument("--model-config", help=MODEL_CONFIG_HELP)
+    orchestrate.add_argument("--samples", type=int, default=200, help="messages per scenario")
+    orchestrate.add_argument("--base-url")
+    orchestrate.set_defaults(func=cmd_orchestrate)
 
     show = commands.add_parser("show", help="render one trajectory as markdown")
     show.add_argument("file")
