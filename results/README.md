@@ -127,4 +127,59 @@ writer per log:
 - 3527567 was put behind the dev override job, and 3527569 behind 3527567, in place of
   3527568 (cancelled).
 
-Not submitted anywhere: `handoff_relay.yaml` on qwen3.8-27b-nothink.
+Not submitted anywhere until the batch below: `handoff_relay.yaml` on qwen3.8-27b-nothink.
+
+### Batch of 2026-10-27 (submitted 2026-10-27)
+
+Normal gpu-a100 queue, ECS26006, `-t 02:00:00`. Each job is named (`-J`) after the log it writes and
+carries `--dependency=singleton`, so jobs that write the same log run one at a time, in
+submission order, with no job ids to track. All 28 were pending when submitted. Status, export
+and the tables-only write-up, safe to rerun:
+
+```bash
+bash scripts/check_batch.sh
+```
+
+When back: run that, then, if `scripts/submit_remaining.sh` still holds an `sbatch` line and
+`squeue` shows room under 30 jobs:
+
+```bash
+bash scripts/submit_remaining.sh ECS26006
+```
+
+| job | -J (log) | config | mode | model |
+|---|---|---|---|---|
+| 3537600 | `bundle_protocol` | `bundle_protocol.yaml` | run | gemma-4-12b-nothink |
+| 3537601 | `bundle_protocol` | `bundle_protocol.yaml` | run | qwen3.8-27b-nothink |
+| 3537602 | `bundle_protocol` | `bundle_protocol.yaml` | run | qwen3.5-9b-nothink |
+| 3537603 | `bundle_team` | `bundle_team.yaml` | run | gemma-4-12b-nothink |
+| 3537604 | `bundle_team` | `bundle_team.yaml` | run | qwen3.8-27b-nothink |
+| 3537605 | `bundle_team` | `bundle_team.yaml` | run | qwen3.5-9b-nothink |
+| 3537606 | `bundle_dialogue` | `bundle_dialogue.yaml` | run | gemma-4-12b-nothink |
+| 3537607 | `bundle_dialogue` | `bundle_dialogue.yaml` | run | qwen3.8-27b-nothink |
+| 3537608 | `bundle_dialogue` | `bundle_dialogue.yaml` | run | qwen3.5-9b-nothink |
+| 3537609 | `lp_bundle` | `lp_bundle.yaml` | both | gemma-4-12b-nothink |
+| 3537610 | `lp_bundle` | `lp_bundle.yaml` | both | qwen3.8-27b-nothink |
+| 3537611 | `lp_bundle` | `lp_bundle.yaml` | both | qwen3.5-9b-nothink |
+| 3537612 | `assurance_back_5` | `assurance_back_5.yaml` | run | gemma-4-12b-nothink |
+| 3537613 | `assurance_back_20` | `assurance_back_20.yaml` | run | gemma-4-12b-nothink |
+| 3537614 | `assurance_back_50` | `assurance_back_50.yaml` | run | gemma-4-12b-nothink |
+| 3537615 | `assurance_back_5` | `assurance_back_5.yaml` | run | qwen3.5-9b-nothink |
+| 3537616 | `assurance_back_20` | `assurance_back_20.yaml` | run | qwen3.5-9b-nothink |
+| 3537617 | `assurance_back_50` | `assurance_back_50.yaml` | run | qwen3.5-9b-nothink |
+| 3537618 | `orchestrator_gemma-4-12b-nothink` | `orchestrate.yaml` | orchestrate | gemma-4-12b-nothink |
+| 3537619 | `orchestrator_qwen3.8-27b-nothink` | `orchestrate.yaml` | orchestrate | qwen3.8-27b-nothink |
+| 3537620 | `orchestrator_qwen3.5-9b-nothink` | `orchestrate.yaml` | orchestrate | qwen3.5-9b-nothink |
+| 3537621 | `bundle_protocol` | `bundle_protocol.yaml` | run | qwen3.5-27b-nothink |
+| 3537622 | `bundle_team` | `bundle_team.yaml` | run | qwen3.5-27b-nothink |
+| 3537623 | `bundle_dialogue` | `bundle_dialogue.yaml` | run | qwen3.5-27b-nothink |
+| 3537624 | `bundle_protocol` | `bundle_protocol.yaml` | run | gpt-oss-20b-low |
+| 3537625 | `bundle_team` | `bundle_team.yaml` | run | gpt-oss-20b-low |
+| 3537626 | `bundle_dialogue` | `bundle_dialogue.yaml` | run | gpt-oss-20b-low |
+| 3537627 | `lp_bundle` | `lp_bundle.yaml` | both | qwen3.5-27b-nothink |
+
+Not submitted (the 30-job cap), in `scripts/submit_remaining.sh`: `handoff_relay.yaml` on
+qwen3.8-27b-nothink (`-J handoff_relay`). lp_bundle runs in `both` mode on every model it was
+submitted for, since all four have a logprob block. `sc orchestrate` was built (Part 5's guard did
+not trigger), so the three orchestrate jobs run; their messages land in
+`outputs/orchestrator/<model>.jsonl`, outside `outputs/runs`.
