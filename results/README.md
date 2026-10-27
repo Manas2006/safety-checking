@@ -37,6 +37,11 @@ Rerun it after a job lands, then commit the tables with the write-up that quotes
   also holds handoff_performed and handoff_hardened on Qwen3.5-9B. Tables only, no
   interpretation yet.
 
+- [2026-10-27: follow-up check rates and outcomes](2026-10-27-followups.md): competing,
+  override, urgency, handoff_long, precedent, inject, contrast2_ingredients, handoff_source,
+  handoff_hardened, handoff_performed and handoff_relay; handoff.yaml on five more models, at
+  n = 100, and in logprob mode. Tables only, no interpretation yet.
+
 `tables/logprob_validation.csv` compares the 200-sample validation run with the logprob
 predictions; the export script writes it whenever `gate_neutral.jsonl` exists.
 
@@ -53,7 +58,7 @@ sacct -u manasp123 -S 2026-10-21 -o JobID,JobName%34,Partition,State,Elapsed,Sta
 
 The normal gpu-a100 queue had started none of the jobs below in 37 hours, so they were
 cancelled there and rerun on the dev queue (1 running and 3 submitted per user), in this order.
-Tables are in `tables/`; no write-up yet.
+Tables are in `tables/`; write-up in [2026-10-27-followups.md](2026-10-27-followups.md).
 
 | # | job | config | model | state | normal-queue job cancelled |
 |---|---|---|---|---|---|
@@ -83,7 +88,10 @@ Also run on the dev queue earlier: handoff.yaml on Qwen3.5-9B, Gemma 4 12B and Q
 (3527551 to 3527553), and handoff_performed and handoff_hardened on Qwen3.5-9B (3528657,
 3528663).
 
-### Still pending on gpu-a100 and gpu-h100
+### Run on gpu-a100, 2026-10-24 and 2026-10-25
+
+All exit 0 with no errored runs. Write-up in
+[2026-10-27-followups.md](2026-10-27-followups.md).
 
 | job | config | mode | model | partition | log | after |
 |---|---|---|---|---|---|---|
@@ -92,8 +100,6 @@ Also run on the dev queue earlier: handoff.yaml on Qwen3.5-9B, Gemma 4 12B and Q
 | 3528650 | `handoff_n100.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `handoff.jsonl` | 3528649 |
 | 3528651 | `handoff_n100.yaml` | run | gemma-4-12b-nothink | gpu-a100 | `handoff.jsonl` | 3528650 |
 | 3528652 | `handoff_n100.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `handoff.jsonl` | 3528651 |
-| 3528653 | `handoff.yaml` | run | gpt-oss-120b-low | gpu-h100 | `handoff.jsonl` | 3528652 |
-| 3528654 | `handoff.yaml` | run | gemma-4-31b-nothink | gpu-h100 | `handoff.jsonl` | 3528653 |
 | 3527567 | `override.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `override.jsonl` | 3531222 (done) |
 | 3527569 | `override.yaml` | run | qwen3.8-27b-nothink | gpu-a100 | `override.jsonl` | 3527567 |
 | 3527570 | `urgency.yaml` | run | qwen3.5-9b-nothink | gpu-a100 | `urgency.jsonl` | none |
@@ -108,7 +114,15 @@ Also run on the dev queue earlier: handoff.yaml on Qwen3.5-9B, Gemma 4 12B and Q
 | 3528655 | `handoff.yaml` | logprob | qwen3.5-9b-nothink | gpu-a100 | `handoff.logprob.jsonl` | none |
 | 3528656 | `handoff.yaml` | logprob | qwen3.8-27b-nothink | gpu-a100 | `handoff.logprob.jsonl` | 3528655 |
 
-Two pending jobs had their dependencies changed to keep one writer per log:
+### Still pending on gpu-h100
+
+| job | config | mode | model | partition | log | after |
+|---|---|---|---|---|---|---|
+| 3528653 | `handoff.yaml` | run | gpt-oss-120b-low | gpu-h100 | `handoff.jsonl` | 3528652 |
+| 3528654 | `handoff.yaml` | run | gemma-4-31b-nothink | gpu-h100 | `handoff.jsonl` | 3528653 |
+
+Three of the gpu-a100 jobs above had their dependencies changed on 2026-10-23 to keep one
+writer per log:
 - 3528648 was re-pointed from 3528647 (cancelled) onto the dev handoff jobs.
 - 3527567 was put behind the dev override job, and 3527569 behind 3527567, in place of
   3527568 (cancelled).
