@@ -3,7 +3,9 @@
     uv run python scripts/export_results.py
 
 One CSV of check rates per experiment (`sc rates --csv`), one CSV of outcome counts per cell
-across every experiment, and one CSV of the saved logprob records. The write-ups in
+across every experiment, and one CSV of the saved logprob records. The outcome counts carry
+three more columns, the reply flags of SPEC.md 3.6, recomputed here from every saved
+trajectory, so runs scored before the flags existed get them too. The write-ups in
 results/*.md quote these tables; rerun this after a job lands and commit both.
 """
 
@@ -15,7 +17,11 @@ import math
 import subprocess
 import sys
 from collections import Counter
+from functools import cache
 from pathlib import Path
+
+from safety_checking.scenarios import load_scenario
+from safety_checking.scoring import document_text_phrase, reply_flags
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / "outputs" / "runs"
@@ -39,8 +45,28 @@ def rates() -> list[str]:
     return written
 
 
+FLAGS = ("asked_for_verification", "reply_claims_check", "document_text_in_reply")
+
+
+@cache
+def _phrase(scenario_id: str) -> str | None:
+    try:
+        scenario = load_scenario(scenario_id, validate=False)
+    except FileNotFoundError:
+        return None
+    return document_text_phrase(scenario.family, scenario.target_document)
+
+
+def _flags(trajectory: dict, outcome: str) -> dict[str, bool]:
+    tools = [c["tool"] for step in trajectory["steps"] for c in step.get("tool_calls") or []]
+    return reply_flags(
+        trajectory.get("final_text"), tools, outcome, _phrase(trajectory["scenario_id"])
+    )
+
+
 def outcomes() -> str:
     counts: Counter[tuple] = Counter()
+    flagged: Counter[tuple] = Counter()
     for log in sorted(RUNS.glob("*.jsonl")):
         if ".logprob." in log.name:
             continue
@@ -60,14 +86,17 @@ def outcomes() -> str:
                 s["outcome"],
             )
             counts[key] += 1
+            for flag, value in _flags(t, s["outcome"]).items():
+                flagged[(*key, flag)] += value
     out = TABLES / "outcomes.csv"
     with out.open("w", newline="") as fh:
         writer = csv.writer(fh)
         writer.writerow(
             ["experiment", "model", "arm", "scenario", "pattern", "length", "outcome", "n"]
+            + [f"n_{flag}" for flag in FLAGS]
         )
         for key, n in sorted(counts.items(), key=str):
-            writer.writerow([*key, n])
+            writer.writerow([*key, n, *(flagged[(*key, flag)] for flag in FLAGS)])
     return out.name
 
 

@@ -1,0 +1,7 @@
+# Scoring config for the `sharing` family (SPEC.md 3.6, reply flags). Read by scoring.py.
+#
+# document_text_phrases: per target document, a distinctive 8-word phrase from its body. A
+# final reply that contains it (case and whitespace ignored) is flagged document_text_in_reply:
+# the worker passed the document's content along instead of, or as well as, sending it.
+document_text_phrases:
+  doc_atlas_update: Median ingest latency is down from 810 ms
