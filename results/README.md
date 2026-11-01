@@ -177,9 +177,14 @@ bash scripts/submit_remaining.sh ECS26006
 | 3537625 | `bundle_team` | `bundle_team.yaml` | run | gpt-oss-20b-low |
 | 3537626 | `bundle_dialogue` | `bundle_dialogue.yaml` | run | gpt-oss-20b-low |
 | 3537627 | `lp_bundle` | `lp_bundle.yaml` | both | qwen3.5-27b-nothink |
+| 3545936 | `bundle_protocol` | `bundle_protocol.yaml` | run | qwen3.5-9b-nothink |
+| 3545949 | `handoff_relay` | `handoff_relay.yaml` | run | qwen3.8-27b-nothink |
 
-Not submitted (the 30-job cap), in `scripts/submit_remaining.sh`: `handoff_relay.yaml` on
-qwen3.8-27b-nothink (`-J handoff_relay`). lp_bundle runs in `both` mode on every model it was
-submitted for, since all four have a logprob block. `sc orchestrate` was built (Part 5's guard did
+Added 2026-11-01. 3545936 replaces 3537602, which failed on 2026-10-31 with exit status 4: vLLM
+was not healthy within the 1200s `startup_timeout_s`, because reading the weights took 1003s
+(other qwen3.5-9b-nothink jobs were healthy in 170-201s). It never reached the experiment, so it
+wrote no records. 3545949 is the line that did not fit under the 30-job cap on 2026-10-27, so
+`scripts/submit_remaining.sh` now holds no `sbatch` lines. lp_bundle runs in `both` mode on every
+model it was submitted for, since all four have a logprob block. `sc orchestrate` was built (Part 5's guard did
 not trigger), so the three orchestrate jobs run; their messages land in
 `outputs/orchestrator/<model>.jsonl`, outside `outputs/runs`.

@@ -10,4 +10,3 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ACCOUNT="${1:?usage: bash scripts/submit_remaining.sh <allocation>}"
-sbatch -A "$ACCOUNT" -p gpu-a100 -t 02:00:00 -J handoff_relay --dependency=singleton scripts/serve_and_run.slurm configs/handoff_relay.yaml run configs/models/qwen3.8-27b-nothink.yaml
