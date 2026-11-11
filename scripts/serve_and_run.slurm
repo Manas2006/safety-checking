@@ -56,7 +56,10 @@ MODEL_ID="$(field id)"
 HOST="$(field serve.host)"
 PORT="$(field serve.port)"
 TP="$(field serve.tensor_parallel_size)"
-STARTUP_TIMEOUT="$(field serve.startup_timeout_s)"
+# SC_STARTUP_TIMEOUT overrides the YAML's value without editing the model config (which would
+# change every run id): weight reads from $WORK have stalled for 15+ minutes (jobs 3537602,
+# 3537605, 3545936, 3545949), past the 1200s the configs set.
+STARTUP_TIMEOUT="${SC_STARTUP_TIMEOUT:-$(field serve.startup_timeout_s)}"
 PINNED_VLLM="$(field serve.vllm_version)"
 BASE_URL="http://$HOST:$PORT/v1"
 mapfile -t SERVE_ARGS < <("$SC" serve-args "$EXPERIMENT_CONFIG" "${MODEL_ARGS[@]}" --lines)
