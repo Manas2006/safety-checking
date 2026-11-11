@@ -188,3 +188,33 @@ wrote no records. 3545949 is the line that did not fit under the 30-job cap on 2
 model it was submitted for, since all four have a logprob block. `sc orchestrate` was built (Part 5's guard did
 not trigger), so the three orchestrate jobs run; their messages land in
 `outputs/orchestrator/<model>.jsonl`, outside `outputs/runs`.
+
+#### Outcome of the queued jobs, and resubmission of 2026-11-11
+
+Done: 3537622, 3537623, 3537627 (qwen3.5-27b-nothink). 3537624, 3537625, 3537626 (gpt-oss-20b-low)
+exited 1 only because `sc run` returns 1 when any sample errors: 1, 1 and 2 errored samples out of
+800, 1400 and 1100 records; their data is kept and they are not rerun.
+
+Failed with exit status 4 (vLLM not healthy within 1200s): 3537605, 3537608, 3537611, 3545936
+(qwen3.5-9b-nothink), 3537621 (qwen3.5-27b-nothink), 3545949 (qwen3.8-27b-nothink). Every one
+stalled reading safetensors from `$WORK` (Lustre). All five qwen3.5-9b-nothink stalls, and 3537602
+before them, stopped on shard 4/4, which sits on OST 22; the other two models also have a shard
+there. A 256 MiB read from that shard ran at normal speed on 2026-11-11 (63 vs 66 MB/s from OST 1),
+so the cause is likely intermittent and unconfirmed. 3528654 (gemma-4-31b-nothink) exited 3: the
+torch compile cache was corrupt (`pickle data was truncated`); `$WORK/cache/vllm/torch_compile_cache`
+was moved aside to `torch_compile_cache.corrupt-2026-11-11`, so the next start of every model
+recompiles.
+
+Resubmitted with `--export=ALL,SC_STARTUP_TIMEOUT=2700` (the job script's override; model YAMLs
+and run ids unchanged). The three qwen3.5-9b-nothink jobs after 3575053 also wait on it
+(`afterany`), so only one job fills that model's empty compile cache at a time.
+
+| job | -J (log) | config | mode | model |
+|---|---|---|---|---|
+| 3575053 | `bundle_protocol` | `bundle_protocol.yaml` | run | qwen3.5-9b-nothink |
+| 3575054 | `bundle_team` | `bundle_team.yaml` | run | qwen3.5-9b-nothink |
+| 3575055 | `bundle_dialogue` | `bundle_dialogue.yaml` | run | qwen3.5-9b-nothink |
+| 3575056 | `lp_bundle` | `lp_bundle.yaml` | both | qwen3.5-9b-nothink |
+| 3575057 | `bundle_protocol` | `bundle_protocol.yaml` | run | qwen3.5-27b-nothink |
+| 3575058 | `handoff_relay` | `handoff_relay.yaml` | run | qwen3.8-27b-nothink |
+| 3575059 | `handoff` | `handoff.yaml` | run | gemma-4-31b-nothink (gpu-h100) |
