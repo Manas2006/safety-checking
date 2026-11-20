@@ -218,3 +218,10 @@ and run ids unchanged). The three qwen3.5-9b-nothink jobs after 3575053 also wai
 | 3575057 | `bundle_protocol` | `bundle_protocol.yaml` | run | qwen3.5-27b-nothink |
 | 3575058 | `handoff_relay` | `handoff_relay.yaml` | run | qwen3.8-27b-nothink |
 | 3575059 | `handoff` | `handoff.yaml` | run | gemma-4-31b-nothink (gpu-h100) |
+
+All seven finished 2026-11-13 to 11-15 with exit status 0 and no errored samples. Startup took
+146-577s, inside the old 1200s limit, so the longer timeout was not needed this time; the
+weight-read stalls did not recur. With these the batch of 2026-10-27 has every planned cell.
+`handoff.rates.csv` and `handoff_relay.rates.csv` now include gemma-4-31b-nothink and
+qwen3.8-27b-nothink, but the handoff sections of `2026-10-27-followups.md` were written before
+and do not quote them yet.
