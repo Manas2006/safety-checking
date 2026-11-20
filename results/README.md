@@ -39,7 +39,7 @@ Rerun it after a job lands, then commit the tables with the write-up that quotes
 
 - [2026-10-27: follow-up check rates and outcomes](2026-10-27-followups.md): competing,
   override, urgency, handoff_long, precedent, inject, contrast2_ingredients, handoff_source,
-  handoff_hardened, handoff_performed and handoff_relay; handoff.yaml on five more models, at
+  handoff_hardened, handoff_performed and handoff_relay; handoff.yaml on seven more models, at
   n = 100, and in logprob mode. Tables only, no interpretation yet.
 
 `tables/logprob_validation.csv` compares the 200-sample validation run with the logprob
@@ -222,6 +222,6 @@ and run ids unchanged). The three qwen3.5-9b-nothink jobs after 3575053 also wai
 All seven finished 2026-11-13 to 11-15 with exit status 0 and no errored samples. Startup took
 146-577s, inside the old 1200s limit, so the longer timeout was not needed this time; the
 weight-read stalls did not recur. With these the batch of 2026-10-27 has every planned cell.
-`handoff.rates.csv` and `handoff_relay.rates.csv` now include gemma-4-31b-nothink and
-qwen3.8-27b-nothink, but the handoff sections of `2026-10-27-followups.md` were written before
-and do not quote them yet.
+The hand-written handoff sections of `2026-10-27-followups.md` were updated on 2026-11-20: the
+relay tables add qwen3.8-27b-nothink, and "handoff.yaml on seven more models" adds
+gemma-4-31b-nothink and gpt-oss-120b-low (3528653, which finished 2026-10-29).
